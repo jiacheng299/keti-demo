@@ -1,0 +1,45 @@
+# Python cache and test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# Model weights and inference engines
+models/**/*.pt
+models/**/*.pth
+models/**/*.onnx
+models/**/*.engine
+
+# Videos and generated run outputs
+assets/demo_videos/
+runs/
+*.mp4
+*.avi
+*.mov
+
+# Document review intermediates
+.docx_review/
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files and logs
+*.tmp
+*.temp
+*.log
+~$*
