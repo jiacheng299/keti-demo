@@ -165,11 +165,11 @@ Expected: Streamlit starts without import errors and serves the page locally. St
 
 **Interfaces:** validation output records model source, supported classes, confidence threshold, positive/negative clip behavior, and CPU processing time.
 
-- [ ] Define comparison rows for flame, smoke, negative clips, load success, and CPU speed.
-- [ ] Obtain public weights and matching permitted demo clips; document licenses and attribution.
-- [ ] Run all candidates on the same clip set and input size.
-- [ ] Select one primary model; select a backup or narrow scope to flame-only if smoke results are unstable.
-- [ ] Save reproducible results and exact weight filenames.
+- [x] Define comparison rows for flame, smoke, negative clips, load success, and CPU speed.
+- [x] Obtain public weights and matching permitted demo clips; document licenses and attribution.
+- [x] Run all candidates on the same clip set and input size.
+- [x] Select one primary model; select a backup or narrow scope to flame-only if smoke results are unstable.
+- [x] Save reproducible results and exact weight filenames.
 
 ## Day 4: Data Contracts and Model Registry
 
