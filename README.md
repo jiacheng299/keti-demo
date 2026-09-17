@@ -5,6 +5,7 @@
 - [设计规范](docs/superpowers/specs/2026-09-16-open-scene-vision-demo-design.md)
 - [实施计划](docs/superpowers/plans/2026-09-17-open-scene-demo-implementation.md)
 - [功能说明](docs/03_feature_manual.md)
+- [模型与样例选择记录](docs/model_selection.md)
 - [14 天开发清单](worklog/daily_checklist.md)
 - [每日工作记录](worklog/daily_log.md)
 

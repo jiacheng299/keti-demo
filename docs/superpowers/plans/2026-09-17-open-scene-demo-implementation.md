@@ -151,11 +151,11 @@ Expected: Streamlit starts without import errors and serves the page locally. St
 
 **Interfaces:** validation script accepts `--video`, `--weights`, and `--imgsz`; prints readable CPU timing and writes an annotated sample.
 
-- [ ] Test normalized bounding-box conversion on a fixed in-memory prediction fixture.
-- [ ] Run test and observe failure before implementation.
-- [ ] Download a public lightweight general detector and record source, license, version, and checksum.
-- [ ] Implement model validation script using CPU inference only.
-- [ ] Run focused test, process a short public video, and record speed and detection evidence.
+- [x] Test normalized bounding-box conversion on a fixed in-memory prediction fixture.
+- [x] Run test and observe failure before implementation.
+- [x] Download a public lightweight general detector and record source, license, version, and checksum.
+- [x] Implement model validation script using CPU inference only.
+- [x] Run focused test, process a short public video, and record speed and detection evidence.
 
 ## Day 3: Fire Model Selection
 
