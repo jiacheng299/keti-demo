@@ -1,0 +1,326 @@
+# Open Scene Vision Demo Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Build a CPU-friendly, two-scene video analysis demo that turns natural-language requests into validated scene configuration, selects a local model plugin, evaluates events, and exports evidence.
+
+**Architecture:** Keep a shared video pipeline and normalized detection/event contracts. Add border and fire capabilities as independent model adapters and rule configurations. Use DeepSeek only to produce validated `SceneSpec` JSON; provide offline templates when the API is unavailable.
+
+**Tech Stack:** Python 3.11, Streamlit, OpenCV, Ultralytics YOLO, ByteTrack, Pydantic, PyYAML, Pandas, pytest.
+
+**Spec:** `docs/superpowers/specs/2026-09-16-open-scene-vision-demo-design.md`
+
+## Global Constraints
+
+- Development period: 14 days, 3 hours per day, about 42 hours total.
+- Hardware: CPU-only personal laptop.
+- Video input: local files only in this demo.
+- LLM: DeepSeek API parses requests; no local multimodal LLM deployment.
+- Vision: local lightweight models; public pretrained weights and public demo videos are allowed.
+- Do not modify the original project proposal.
+- Demo validates core flow; do not claim production completion or formal proposal metrics without evidence.
+- Do not execute arbitrary code or commands returned by DeepSeek.
+- Keep API keys in environment variables; never commit them.
+- Before each production behavior change, add a test and observe the expected failure.
+- Freeze features after Day 12; Days 13 and 14 are for verification, fallback preparation, and defense rehearsal.
+
+---
+
+## File Structure
+
+- `app.py`: Streamlit entry point and page composition.
+- `src/schemas/scene_spec.py`: validated request and rule data contracts.
+- `src/schemas/detection.py`: normalized model output.
+- `src/schemas/event.py`: normalized event output.
+- `src/llm/deepseek_client.py`: API transport, timeout, and retry behavior.
+- `src/llm/scene_parser.py`: prompt response parsing and schema validation.
+- `src/llm/prompts.py`: constrained prompt templates.
+- `src/models/base_adapter.py`: model adapter protocol.
+- `src/models/model_registry.py`: model configuration lookup and adapter selection.
+- `src/models/yolo_adapter.py`: generic YOLO adapter for people and vehicles.
+- `src/models/fire_adapter.py`: fire and smoke adapter.
+- `src/video/video_source.py`: local video validation and metadata.
+- `src/video/frame_sampler.py`: CPU-aware frame sampling.
+- `src/video/video_writer.py`: annotated output video writing.
+- `src/tracking/tracker.py`: short-lived track IDs and center-point history.
+- `src/rules/region_rules.py`: region entry and exit rules.
+- `src/rules/line_rules.py`: line-crossing rule.
+- `src/rules/temporal_rules.py`: dwell and consecutive-frame rules.
+- `src/rules/rule_engine.py`: evaluate configured rules against normalized evidence.
+- `src/events/event_manager.py`: deduplication, cooldown, and snapshots.
+- `src/events/event_exporter.py`: JSON, CSV, and run summary exports.
+- `src/visualization/annotator.py`: draw detections, zones, lines, and alerts.
+- `src/pipeline/analysis_pipeline.py`: orchestrate the validated flow.
+- `config/settings.yaml`: application defaults.
+- `config/models.yaml`: model IDs, local weight paths, classes, and CPU settings.
+- `config/scenes/*.yaml`: offline scene templates.
+- `tests/`: unit and integration tests.
+- `worklog/daily_checklist.md`: fourteen-day progress checklist.
+- `worklog/daily_log.md`: actual time, evidence, issues, and next action.
+- `docs/03_feature_manual.md`: user-facing function description.
+- `docs/05_test_and_acceptance.md`: test cases and defense acceptance criteria.
+- `docs/06_defense_guide.md`: runbook, five-minute demo, and offline fallback.
+
+## Day 1: Project Foundation
+
+### Task 1: Create a reproducible Python project shell
+
+**Files:**
+- Create: `app.py`
+- Create: `requirements.txt`
+- Create: `.env.example`
+- Create: `README.md`
+- Create: `src/__init__.py`
+- Create: `config/settings.yaml`
+- Test: `tests/test_app_smoke.py`
+
+**Interfaces:**
+- `app.py` exposes `main() -> None` and runs it under `if __name__ == "__main__"`.
+- `main()` renders the title `开放场景视觉语义认知 Demo` and a short health/status section.
+- `.env.example` contains only `DEEPSEEK_API_KEY=` with no real credential.
+
+- [x] **Step 1: Write the failing smoke test**
+
+Create `tests/test_app_smoke.py`:
+
+```python
+from streamlit.testing.v1 import AppTest
+
+
+def test_app_renders_title_and_mode_status():
+    app = AppTest.from_file("app.py").run()
+
+    assert not app.exception
+    assert any("开放场景视觉语义认知 Demo" in item.value for item in app.title)
+    assert any("当前阶段：项目骨架" in item.value for item in app.markdown)
+```
+
+- [x] **Step 2: Run the smoke test and confirm expected failure**
+
+Run: `python -m pytest tests/test_app_smoke.py -q`
+Expected: FAIL because `app.py` does not exist.
+
+- [x] **Step 3: Add the minimal app and configuration**
+
+Create `app.py`:
+
+```python
+import streamlit as st
+
+
+def main() -> None:
+    st.title("开放场景视觉语义认知 Demo")
+    st.markdown("当前阶段：项目骨架。")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+Add only required dependencies to `requirements.txt`: `streamlit`, `pytest`. Add a minimal YAML settings file with app title, upload size limit, and default CPU frame size. Document environment creation and app launch in README.
+
+- [x] **Step 4: Run the smoke test and verify it passes**
+
+Run: `python -m pytest tests/test_app_smoke.py -q`
+Expected: PASS, one test.
+
+- [x] **Step 5: Launch the app locally**
+
+Run: `streamlit run app.py --server.headless true`
+Expected: Streamlit starts without import errors and serves the page locally. Stop it with Ctrl+C after confirming.
+
+### Task 2: Initialize the daily work log
+
+**Files:**
+- Modify: `worklog/daily_checklist.md`
+- Modify: `worklog/daily_log.md`
+
+**Interfaces:**
+- Checklist has one date, three-hour budget, tasks, evidence, and completion status per day.
+- Daily log captures actual hours, AI-assisted changes, verification evidence, blockers, and next action.
+
+- [x] **Step 1: Mark Day 1 work items and evidence fields**
+- [x] **Step 2: Leave personal time unfilled until the user reports it**
+- [x] **Step 3: Add time categories for daily totals**
+
+## Day 2: Border Model Baseline
+
+### Task 3: Verify generic people and vehicle detection
+
+**Files:** `models/border/` (ignored weights), `scripts/validate_border_model.py`, `tests/test_model_output.py`, `worklog/daily_log.md`.
+
+**Interfaces:** validation script accepts `--video`, `--weights`, and `--imgsz`; prints readable CPU timing and writes an annotated sample.
+
+- [ ] Test normalized bounding-box conversion on a fixed in-memory prediction fixture.
+- [ ] Run test and observe failure before implementation.
+- [ ] Download a public lightweight general detector and record source, license, version, and checksum.
+- [ ] Implement model validation script using CPU inference only.
+- [ ] Run focused test, process a short public video, and record speed and detection evidence.
+
+## Day 3: Fire Model Selection
+
+### Task 4: Compare public fire/smoke weights on fixed clips
+
+**Files:** `scripts/validate_fire_model.py`, `docs/model_selection.md`, `assets/demo_videos/` (ignored), `worklog/daily_log.md`.
+
+**Interfaces:** validation output records model source, supported classes, confidence threshold, positive/negative clip behavior, and CPU processing time.
+
+- [ ] Define comparison rows for flame, smoke, negative clips, load success, and CPU speed.
+- [ ] Obtain public weights and matching permitted demo clips; document licenses and attribution.
+- [ ] Run all candidates on the same clip set and input size.
+- [ ] Select one primary model; select a backup or narrow scope to flame-only if smoke results are unstable.
+- [ ] Save reproducible results and exact weight filenames.
+
+## Day 4: Data Contracts and Model Registry
+
+### Task 5: Implement SceneSpec, Detection, Event, and registry
+
+**Files:** `src/schemas/*.py`, `src/models/base_adapter.py`, `src/models/model_registry.py`, `config/models.yaml`, `tests/test_scene_spec.py`, `tests/test_model_registry.py`.
+
+**Interfaces:** `SceneSpec.model_validate(payload)`, `ModelRegistry.from_config(path)`, and `ModelRegistry.create(model_id)`; adapters return `list[Detection]`.
+
+- [ ] Write tests for valid scene config, unknown model, and unsupported rule rejection.
+- [ ] Run tests and confirm expected import/validation failures.
+- [ ] Implement minimal Pydantic models and adapter protocol.
+- [ ] Implement registry lookup and unknown-ID error.
+- [ ] Run both tests; verify valid config succeeds and invalid config is rejected.
+
+## Day 5: Video Source and Writer
+
+### Task 6: Read, sample, and write local video
+
+**Files:** `src/video/video_source.py`, `src/video/frame_sampler.py`, `src/video/video_writer.py`, `tests/test_video_source.py`, `tests/test_frame_sampler.py`.
+
+**Interfaces:** `VideoSource.open(path)`, `VideoSource.metadata()`, iterator yielding `(frame_id, timestamp_seconds, frame)`, `FrameSampler.should_process(frame_id)`, and `VideoWriter.write(frame)`.
+
+- [ ] Create tiny synthetic video fixtures in tests without committing binary video files.
+- [ ] Test metadata, unreadable file rejection, frame index, sampling cadence, and output readability.
+- [ ] Implement minimal OpenCV source, sampler, and writer.
+- [ ] Run focused tests and verify resources close on normal and exceptional exit.
+
+## Day 6: Border Model Adapter and Tracking
+
+### Task 7: Normalize general model output and track targets
+
+**Files:** `src/models/yolo_adapter.py`, `src/tracking/tracker.py`, `src/visualization/annotator.py`, `tests/test_tracker.py`, `tests/test_annotator.py`.
+
+**Interfaces:** `YoloAdapter.predict(frame) -> list[Detection]`; `Tracker.update(detections, timestamp_seconds) -> list[Detection]`; `Annotator.draw(frame, detections, scene_state) -> frame`.
+
+- [ ] Test normalized class, confidence, box, and stable IDs across adjacent frame fixtures.
+- [ ] Run tests and confirm they fail on missing modules/interfaces.
+- [ ] Implement CPU adapter and minimal short-term tracking.
+- [ ] Implement drawing for boxes, labels, confidence, and IDs.
+- [ ] Run tests and process the selected border clip.
+
+## Day 7: Border Event Rules
+
+### Task 8: Evaluate regions, line crossing, dwell, and cooldown
+
+**Files:** `src/rules/base_rule.py`, `src/rules/region_rules.py`, `src/rules/line_rules.py`, `src/rules/temporal_rules.py`, `src/rules/rule_engine.py`, `tests/test_region_rules.py`, `tests/test_line_rules.py`, `tests/test_temporal_rules.py`.
+
+**Interfaces:** `RuleEngine.evaluate(scene_spec, detections, frame_state) -> list[EventCandidate]`.
+
+- [ ] Write deterministic geometry and timestamp tests, including no-event boundaries.
+- [ ] Run tests and confirm expected failures.
+- [ ] Implement point-in-polygon, side-change line crossing, dwell, and cooldown state.
+- [ ] Run unit tests and verify border clip triggers the configured event once.
+
+## Day 8: Fire Model and Consecutive Frames
+
+### Task 9: Confirm fire alerts over consecutive frames
+
+**Files:** `src/models/fire_adapter.py`, `config/scenes/fire_detection.yaml`, `tests/test_fire_rules.py`.
+
+**Interfaces:** `FireAdapter.predict(frame) -> list[Detection]`; `ConsecutiveFramesRule.update(detections, frame_id) -> EventCandidate | None`.
+
+- [ ] Test insufficient frames, sufficient frames, brief gaps, and cooldown.
+- [ ] Run tests and observe failures before implementation.
+- [ ] Implement fire output normalization and two-state suspected/confirmed rule.
+- [ ] Run tests and selected fire clip; document known false positives and caveats.
+
+## Day 9: Event Storage and Exports
+
+### Task 10: Persist screenshots, events, and run summary
+
+**Files:** `src/events/event_manager.py`, `src/events/event_exporter.py`, `tests/test_event_manager.py`, `tests/test_event_exporter.py`.
+
+**Interfaces:** `EventManager.add(candidate, frame) -> Event | None`; `EventExporter.export(run_dir, config, events, metrics) -> None`.
+
+- [ ] Test deduplication, snapshot creation, and cooldown using temporary directories.
+- [ ] Test JSON/CSV row equality and stable timestamp formatting.
+- [ ] Run tests and confirm failures due to missing implementation.
+- [ ] Implement event storage and exports.
+- [ ] Run tests and inspect generated files from a short clip.
+
+## Day 10: DeepSeek Parser and Offline Templates
+
+### Task 11: Convert user requests into allowlisted SceneSpec
+
+**Files:** `src/llm/deepseek_client.py`, `src/llm/prompts.py`, `src/llm/scene_parser.py`, `config/scenes/*.yaml`, `tests/test_scene_parser.py`.
+
+**Interfaces:** `DeepSeekClient.complete(messages) -> str`; `SceneParser.parse(text) -> SceneSpec`; `SceneParser.parse_or_template(text, template_id) -> SceneSpec`.
+
+- [ ] Write tests for valid JSON, invalid JSON, unknown model/rule, missing key, and offline fallback.
+- [ ] Run tests and confirm failure before implementation.
+- [ ] Implement API client with environment key, request timeout, one retry, and no key logging.
+- [ ] Implement restricted JSON parsing and Pydantic validation.
+- [ ] Add border crossing, border intrusion, border dwell, and fire templates.
+- [ ] Run tests without network using deterministic response fixtures; verify offline mode.
+
+## Day 11: Analysis Pipeline
+
+### Task 12: Connect source, adapter, tracking, rules, and exports
+
+**Files:** `src/pipeline/analysis_pipeline.py`, `tests/test_pipeline_smoke.py`.
+
+**Interfaces:** `AnalysisPipeline.run(video_path, scene_spec, run_dir, progress_callback=None, stop_event=None) -> RunSummary`.
+
+- [ ] Write pipeline test with a tiny generated clip and deterministic fake adapter.
+- [ ] Assert result video, summary, JSON, and CSV exist with matching event counts.
+- [ ] Run test and confirm it fails because the pipeline does not exist.
+- [ ] Implement a single orchestration path with resource cleanup and progress updates.
+- [ ] Run integration tests for both scene adapters on their fixed local clips.
+
+## Day 12: Streamlit Interface
+
+### Task 13: Connect upload, request, analysis, and download controls
+
+**Files:** `app.py`, `src/ui/` if needed, `tests/test_app_smoke.py`, `README.md`.
+
+**Interfaces:** UI submits validated `SceneSpec` to `AnalysisPipeline.run` and displays `RunSummary` without implementing model or rule logic.
+
+- [ ] Add AppTest assertions for upload label, scene input, template mode, and offline status.
+- [ ] Run tests and confirm expected missing UI controls.
+- [ ] Implement single-page controls, current model, progress, result video, events, and downloads.
+- [ ] Run AppTest and perform one manual end-to-end run for each scene.
+
+## Day 13: Verification and Offline Package
+
+### Task 14: Run acceptance tests and freeze functionality
+
+**Files:** `docs/05_test_and_acceptance.md`, `worklog/daily_checklist.md`, `worklog/daily_log.md`.
+
+- [ ] Run all tests and record pass/fail output.
+- [ ] Process both fixed videos three times each; record duration and blockers.
+- [ ] Test missing API key and disabled network using offline templates.
+- [ ] Generate stable backup output videos and check ignored asset/weight paths.
+- [ ] Fix only issues that block acceptance; do not add features.
+
+## Day 14: Defense Package and Rehearsal
+
+### Task 15: Prepare operator runbook and rehearsal evidence
+
+**Files:** `docs/03_feature_manual.md`, `docs/06_defense_guide.md`, `README.md`, `worklog/daily_log.md`.
+
+- [ ] Document actual implemented functions and label future functions as planned.
+- [ ] Write the five-minute demo script, exact clicks, expected outputs, and fallback actions.
+- [ ] Rehearse the complete flow three times and record timings.
+- [ ] Verify private data, credentials, large weights, videos, and review intermediates are absent from Git.
+- [ ] Freeze the defense version and report remaining limitations.
+
+## Plan Self-Review
+
+- Spec coverage: model plugins, scene configuration, local video, rules, events, exports, UI, offline fallback, testing, daily logs, defense package, and explicit non-goals all map to tasks above.
+- Scope: camera/RTSP, model training, production database, local multimodal LLM, multi-stream processing, and full Agent Loop remain excluded.
+- Interface consistency: all adapters return `list[Detection]`; the pipeline receives `SceneSpec` and writes a `RunSummary`; event exports consume normalized events.
+- Dependency caution: add only imports required by a scheduled task; verify candidate weight compatibility and license before adoption.
