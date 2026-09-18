@@ -29,6 +29,7 @@ class ModelDefinition(BaseModel):
     classes: tuple[str, ...] = Field(min_length=1)
     device: str = Field(default="cpu", pattern=r"^cpu$")
     imgsz: int = Field(default=416, ge=160, le=1280)
+    confidence: float = Field(default=0.25, ge=0, le=1)
 
 
 AdapterFactory = Callable[[ModelDefinition], ModelAdapter]

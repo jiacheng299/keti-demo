@@ -206,11 +206,11 @@ Expected: Streamlit starts without import errors and serves the page locally. St
 
 **Interfaces:** `YoloAdapter.predict(frame) -> list[Detection]`; `Tracker.update(detections, timestamp_seconds) -> list[Detection]`; `Annotator.draw(frame, detections, scene_state) -> frame`.
 
-- [ ] Test normalized class, confidence, box, and stable IDs across adjacent frame fixtures.
-- [ ] Run tests and confirm they fail on missing modules/interfaces.
-- [ ] Implement CPU adapter and minimal short-term tracking.
-- [ ] Implement drawing for boxes, labels, confidence, and IDs.
-- [ ] Run tests and process the selected border clip.
+- [x] Test normalized class, confidence, box, and stable IDs across adjacent frame fixtures.
+- [x] Run tests and confirm they fail on missing modules/interfaces.
+- [x] Implement CPU adapter and minimal short-term tracking.
+- [x] Implement drawing for boxes, class labels, and IDs; keep confidence in data but omit it from the video overlay.
+- [x] Run tests and process the selected border clip.
 
 ## Day 7: Border Event Rules
 

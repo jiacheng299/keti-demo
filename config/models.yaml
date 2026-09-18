@@ -6,9 +6,11 @@ models:
     classes: [person, car, motorcycle, bus, truck]
     device: cpu
     imgsz: 416
+    confidence: 0.25
   fire_smoke:
     adapter: fire
     weights: models/fire/fire_smoke_yolov8n.pt
     classes: [smoke, fire]
     device: cpu
     imgsz: 416
+    confidence: 0.25
