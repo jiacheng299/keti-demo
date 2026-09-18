@@ -193,10 +193,10 @@ Expected: Streamlit starts without import errors and serves the page locally. St
 
 **Interfaces:** `VideoSource.open(path)`, `VideoSource.metadata()`, iterator yielding `(frame_id, timestamp_seconds, frame)`, `FrameSampler.should_process(frame_id)`, and `VideoWriter.write(frame)`.
 
-- [ ] Create tiny synthetic video fixtures in tests without committing binary video files.
-- [ ] Test metadata, unreadable file rejection, frame index, sampling cadence, and output readability.
-- [ ] Implement minimal OpenCV source, sampler, and writer.
-- [ ] Run focused tests and verify resources close on normal and exceptional exit.
+- [x] Create tiny synthetic video fixtures in tests without committing binary video files.
+- [x] Test metadata, unreadable file rejection, frame index, sampling cadence, and output readability.
+- [x] Implement minimal OpenCV source, sampler, and writer.
+- [x] Run focused tests and verify resources close on normal and exceptional exit.
 
 ## Day 6: Border Model Adapter and Tracking
 
