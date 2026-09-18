@@ -1,0 +1,14 @@
+version: 1
+models:
+  yolo_general:
+    adapter: yolo
+    weights: models/border/yolo11n.pt
+    classes: [person, car, motorcycle, bus, truck]
+    device: cpu
+    imgsz: 416
+  fire_smoke:
+    adapter: fire
+    weights: models/fire/fire_smoke_yolov8n.pt
+    classes: [smoke, fire]
+    device: cpu
+    imgsz: 416

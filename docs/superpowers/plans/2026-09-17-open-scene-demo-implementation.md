@@ -179,11 +179,11 @@ Expected: Streamlit starts without import errors and serves the page locally. St
 
 **Interfaces:** `SceneSpec.model_validate(payload)`, `ModelRegistry.from_config(path)`, and `ModelRegistry.create(model_id)`; adapters return `list[Detection]`.
 
-- [ ] Write tests for valid scene config, unknown model, and unsupported rule rejection.
-- [ ] Run tests and confirm expected import/validation failures.
-- [ ] Implement minimal Pydantic models and adapter protocol.
-- [ ] Implement registry lookup and unknown-ID error.
-- [ ] Run both tests; verify valid config succeeds and invalid config is rejected.
+- [x] Write tests for valid scene config, unknown model, and unsupported rule rejection.
+- [x] Run tests and confirm expected import/validation failures.
+- [x] Implement minimal Pydantic models and adapter protocol.
+- [x] Implement registry lookup and unknown-ID error.
+- [x] Run both tests; verify valid config succeeds and invalid config is rejected.
 
 ## Day 5: Video Source and Writer
 
