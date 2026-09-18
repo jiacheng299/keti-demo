@@ -10,7 +10,6 @@ RuleType = Literal[
     "object_present",
     "enter_region",
     "leave_region",
-    "cross_line",
     "dwell",
     "count_greater_than",
     "consecutive_frames",

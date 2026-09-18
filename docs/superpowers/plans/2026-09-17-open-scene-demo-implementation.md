@@ -44,12 +44,11 @@
 - `src/video/video_writer.py`: annotated output video writing.
 - `src/tracking/tracker.py`: short-lived track IDs and center-point history.
 - `src/rules/region_rules.py`: region entry and exit rules.
-- `src/rules/line_rules.py`: line-crossing rule.
 - `src/rules/temporal_rules.py`: dwell and consecutive-frame rules.
 - `src/rules/rule_engine.py`: evaluate configured rules against normalized evidence.
 - `src/events/event_manager.py`: deduplication, cooldown, and snapshots.
 - `src/events/event_exporter.py`: JSON, CSV, and run summary exports.
-- `src/visualization/annotator.py`: draw detections, zones, lines, and alerts.
+- `src/visualization/annotator.py`: draw detections, zones, and alerts.
 - `src/pipeline/analysis_pipeline.py`: orchestrate the validated flow.
 - `config/settings.yaml`: application defaults.
 - `config/models.yaml`: model IDs, local weight paths, classes, and CPU settings.
@@ -214,16 +213,16 @@ Expected: Streamlit starts without import errors and serves the page locally. St
 
 ## Day 7: Border Event Rules
 
-### Task 8: Evaluate regions, line crossing, dwell, and cooldown
+### Task 8: Evaluate forbidden regions, dwell, and cooldown
 
-**Files:** `src/rules/base_rule.py`, `src/rules/region_rules.py`, `src/rules/line_rules.py`, `src/rules/temporal_rules.py`, `src/rules/rule_engine.py`, `tests/test_region_rules.py`, `tests/test_line_rules.py`, `tests/test_temporal_rules.py`.
+**Files:** `src/rules/base_rule.py`, `src/rules/region_rules.py`, `src/rules/temporal_rules.py`, `src/rules/rule_engine.py`, `tests/test_region_rules.py`, `tests/test_temporal_rules.py`.
 
 **Interfaces:** `RuleEngine.evaluate(scene_spec, detections, frame_state) -> list[EventCandidate]`.
 
-- [ ] Write deterministic geometry and timestamp tests, including no-event boundaries.
-- [ ] Run tests and confirm expected failures.
-- [ ] Implement point-in-polygon, side-change line crossing, dwell, and cooldown state.
-- [ ] Run unit tests and verify border clip triggers the configured event once.
+- [x] Write deterministic geometry and timestamp tests, including no-event boundaries.
+- [x] Run tests and confirm expected failures.
+- [x] Implement point-in-polygon, region transitions, dwell, and cooldown state.
+- [x] Run focused tests for forbidden-region transitions, dwell, cooldown, and removed-rule rejection.
 
 ## Day 8: Fire Model and Consecutive Frames
 
@@ -264,7 +263,7 @@ Expected: Streamlit starts without import errors and serves the page locally. St
 - [ ] Run tests and confirm failure before implementation.
 - [ ] Implement API client with environment key, request timeout, one retry, and no key logging.
 - [ ] Implement restricted JSON parsing and Pydantic validation.
-- [ ] Add border crossing, border intrusion, border dwell, and fire templates.
+- [ ] Add border-person intrusion, border-vehicle intrusion, border dwell, and fire templates.
 - [ ] Run tests without network using deterministic response fixtures; verify offline mode.
 
 ## Day 11: Analysis Pipeline

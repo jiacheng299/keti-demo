@@ -13,10 +13,10 @@ def test_scene_spec_accepts_a_supported_border_configuration():
             "targets": ["person"],
             "rules": [
                 {
-                    "type": "cross_line",
+                    "type": "enter_region",
                     "params": {
-                        "line_id": "warning_line",
-                        "direction": "both",
+                        "region_id": "restricted_zone",
+                        "polygon": [[0, 0], [100, 0], [100, 100], [0, 100]],
                     },
                 }
             ],
@@ -27,8 +27,20 @@ def test_scene_spec_accepts_a_supported_border_configuration():
     assert scene.scene_type == "border"
     assert scene.model_id == "yolo_general"
     assert scene.targets == ["person"]
-    assert scene.rules[0].type == "cross_line"
+    assert scene.rules[0].type == "enter_region"
     assert scene.alert.cooldown_seconds == 5
+
+
+def test_scene_spec_rejects_removed_cross_line_rule():
+    payload = {
+        "scene_type": "border",
+        "model_id": "yolo_general",
+        "targets": ["person"],
+        "rules": [{"type": "cross_line", "params": {}}],
+    }
+
+    with pytest.raises(ValueError, match="cross_line"):
+        SceneSpec.model_validate(payload)
 
 
 def test_scene_spec_rejects_an_unsupported_rule():
