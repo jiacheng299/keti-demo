@@ -1,0 +1,16 @@
+scene_type: border
+model_id: yolo_general
+targets:
+  - person
+rules:
+  - type: enter_region
+    params:
+      region_id: restricted_zone
+      polygon:
+        - [160, 120]
+        - [480, 120]
+        - [480, 360]
+        - [160, 360]
+alert:
+  enabled: true
+  cooldown_seconds: 5

@@ -259,12 +259,12 @@ Expected: Streamlit starts without import errors and serves the page locally. St
 
 **Interfaces:** `DeepSeekClient.complete(messages) -> str`; `SceneParser.parse(text) -> SceneSpec`; `SceneParser.parse_or_template(text, template_id) -> SceneSpec`.
 
-- [ ] Write tests for valid JSON, invalid JSON, unknown model/rule, missing key, and offline fallback.
-- [ ] Run tests and confirm failure before implementation.
-- [ ] Implement API client with environment key, request timeout, one retry, and no key logging.
-- [ ] Implement restricted JSON parsing and Pydantic validation.
-- [ ] Add border-person intrusion, border-vehicle intrusion, border dwell, and fire templates.
-- [ ] Run tests without network using deterministic response fixtures; verify offline mode.
+- [x] Write tests for valid JSON, invalid JSON, unknown model/rule, missing key, and offline fallback.
+- [x] Run tests and confirm failure before implementation.
+- [x] Implement API client with environment key, request timeout, one retry, and no key logging.
+- [x] Implement restricted JSON parsing and Pydantic validation.
+- [x] Add border-person intrusion, border-vehicle intrusion, border dwell, and fire templates.
+- [x] Run tests without network using deterministic response fixtures; verify offline mode.
 
 ## Day 11: Analysis Pipeline
 
