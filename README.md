@@ -1,10 +1,12 @@
 # 开放场景视觉语义认知 Demo
 
-本仓库用于构建项目答辩 Demo。当前开发状态、范围与验收口径见：
+本仓库是一个可在 CPU 笔记本上运行的开放场景视频分析 Demo：通过离线模板或 DeepSeek 生成场景配置，再调用边防/火灾小模型和规则引擎生成可视化结果与事件证据。
 
 - [设计规范](docs/superpowers/specs/2026-09-16-open-scene-vision-demo-design.md)
 - [实施计划](docs/superpowers/plans/2026-09-17-open-scene-demo-implementation.md)
 - [功能说明](docs/03_feature_manual.md)
+- [详细用户手册](docs/04_user_guide.md)
+- [测试与验收记录](docs/05_test_and_acceptance.md)
 - [模型与样例选择记录](docs/model_selection.md)
 - [14 天开发清单](worklog/daily_checklist.md)
 - [每日工作记录](worklog/daily_log.md)
@@ -20,7 +22,13 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-需要使用 DeepSeek API 时，复制 `.env.example` 为 `.env` 并在本机设置 `DEEPSEEK_API_KEY`。不要提交 `.env` 或把 API Key 写入代码。
+需要使用 DeepSeek API 时，在启动应用的同一 PowerShell 窗口中执行：
+
+```powershell
+$env:DEEPSEEK_API_KEY="你自己的_API_Key"
+```
+
+项目不会自动读取 `.env`。不要把 API Key 写入代码、文档或 Git。
 
 ## 启动
 
@@ -51,7 +59,14 @@ python -m pip install -r requirements.txt
 ## 测试
 
 ```powershell
-python -m pytest -q
+.\.venv\Scripts\python.exe -m pytest -q
 ```
 
-项目处于逐日开发阶段。README 与功能说明会随已验证能力更新。
+两个固定场景各重复验收 3 次：
+
+```powershell
+Remove-Item Env:DEEPSEEK_API_KEY -ErrorAction SilentlyContinue
+.\.venv\Scripts\python.exe scripts\run_acceptance.py --repeat 3
+```
+
+页面操作、输出文件、故障处理和安全边界请阅读[详细用户手册](docs/04_user_guide.md)。

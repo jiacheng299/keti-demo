@@ -121,3 +121,25 @@ def event_rows_for_display(events: list[dict]) -> list[dict]:
         }
         for event in events
     ]
+
+
+def snapshot_paths_for_display(
+    run_dir: str | Path,
+    events: list[dict],
+) -> list[tuple[Path, dict]]:
+    """Return existing event screenshots contained by the run snapshot folder."""
+    run_root = Path(run_dir).resolve()
+    snapshot_root = (run_root / "snapshots").resolve()
+    snapshots: list[tuple[Path, dict]] = []
+    for event in events:
+        relative_path = event.get("snapshot_path")
+        if not isinstance(relative_path, str) or not relative_path:
+            continue
+        candidate = (run_root / relative_path).resolve()
+        try:
+            candidate.relative_to(snapshot_root)
+        except ValueError:
+            continue
+        if candidate.is_file() and candidate.suffix.lower() in {".jpg", ".jpeg", ".png"}:
+            snapshots.append((candidate, event))
+    return snapshots

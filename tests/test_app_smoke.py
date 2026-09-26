@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import cv2
+import numpy as np
 from streamlit.testing.v1 import AppTest
 
 
@@ -37,6 +39,11 @@ def test_completed_run_renders_video_localized_events_and_downloads(tmp_path):
     run_dir.mkdir()
     result_video = run_dir / "result.mp4"
     result_video.write_bytes(b"fake-mp4")
+    snapshot_dir = run_dir / "snapshots"
+    snapshot_dir.mkdir()
+    encoded, jpeg = cv2.imencode(".jpg", np.zeros((16, 16, 3), dtype=np.uint8))
+    assert encoded
+    (snapshot_dir / "evt-000001.jpg").write_bytes(jpeg.tobytes())
     for filename in ["events.json", "events.csv", "summary.json", "config.json"]:
         (run_dir / filename).write_text("[]", encoding="utf-8")
 
@@ -79,3 +86,4 @@ def test_completed_run_renders_video_localized_events_and_downloads(tmp_path):
         "状态",
     ]
     assert len(app.get("download_button")) == 5
+    assert len(app.image) == 1

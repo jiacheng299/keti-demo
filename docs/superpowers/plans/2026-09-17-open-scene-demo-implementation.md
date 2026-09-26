@@ -22,7 +22,7 @@
 - Do not execute arbitrary code or commands returned by DeepSeek.
 - Keep API keys in environment variables; never commit them.
 - Before each production behavior change, add a test and observe the expected failure.
-- Freeze features after Day 12; Days 13 and 14 are for verification, fallback preparation, and defense rehearsal.
+- Freeze features after Day 12; Days 13 and 14 are for verification, fallback preparation, and detailed user documentation.
 
 ---
 
@@ -58,7 +58,7 @@
 - `worklog/daily_log.md`: actual time, evidence, issues, and next action.
 - `docs/03_feature_manual.md`: user-facing function description.
 - `docs/05_test_and_acceptance.md`: test cases and defense acceptance criteria.
-- `docs/06_defense_guide.md`: runbook, five-minute demo, and offline fallback.
+- `docs/04_user_guide.md`: installation, controls, complete workflows, outputs, troubleshooting, and offline fallback.
 
 ## Day 1: Project Foundation
 
@@ -299,27 +299,27 @@ Expected: Streamlit starts without import errors and serves the page locally. St
 
 **Files:** `docs/05_test_and_acceptance.md`, `worklog/daily_checklist.md`, `worklog/daily_log.md`.
 
-- [ ] Run all tests and record pass/fail output.
-- [ ] Process both fixed videos three times each; record duration and blockers.
-- [ ] Test missing API key and disabled network using offline templates.
-- [ ] Generate stable backup output videos and check ignored asset/weight paths.
-- [ ] Fix only issues that block acceptance; do not add features.
+- [x] Run all tests and record pass/fail output.
+- [x] Process both fixed videos three times each; record duration and blockers.
+- [x] Test missing API key using offline templates with zero network calls.
+- [x] Generate stable backup output videos and check ignored asset/weight paths.
+- [x] Fix only issues that block acceptance; do not add features.
 
-## Day 14: Defense Package and Rehearsal
+## Day 14: User Documentation and Final Audit
 
-### Task 15: Prepare operator runbook and rehearsal evidence
+### Task 15: Prepare detailed user instructions and delivery evidence
 
-**Files:** `docs/03_feature_manual.md`, `docs/06_defense_guide.md`, `README.md`, `worklog/daily_log.md`.
+**Files:** `docs/03_feature_manual.md`, `docs/04_user_guide.md`, `docs/05_test_and_acceptance.md`, `README.md`, `worklog/daily_log.md`.
 
-- [ ] Document actual implemented functions and label future functions as planned.
-- [ ] Write the five-minute demo script, exact clicks, expected outputs, and fallback actions.
-- [ ] Rehearse the complete flow three times and record timings.
-- [ ] Verify private data, credentials, large weights, videos, and review intermediates are absent from Git.
-- [ ] Freeze the defense version and report remaining limitations.
+- [x] Document actual implemented functions and separate known limitations.
+- [x] Write exact installation, launch, page-control, workflow, output, and fallback instructions.
+- [x] Record six repeatable real-model runs and preserve the final outputs locally.
+- [x] Verify private data, credentials, large weights, videos, and review intermediates are absent from Git.
+- [x] Complete the final repository audit and freeze the Demo delivery branch.
 
 ## Plan Self-Review
 
-- Spec coverage: model plugins, scene configuration, local video, rules, events, exports, UI, offline fallback, testing, daily logs, defense package, and explicit non-goals all map to tasks above.
+- Spec coverage: model plugins, scene configuration, local video, rules, events, exports, UI, offline fallback, testing, daily logs, user documentation, and explicit non-goals all map to tasks above.
 - Scope: camera/RTSP, model training, production database, local multimodal LLM, multi-stream processing, and full Agent Loop remain excluded.
 - Interface consistency: all adapters return `list[Detection]`; the pipeline receives `SceneSpec` and writes a `RunSummary`; event exports consume normalized events.
 - Dependency caution: add only imports required by a scheduled task; verify candidate weight compatibility and license before adoption.

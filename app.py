@@ -15,6 +15,7 @@ from src.ui.app_service import (
     event_rows_for_display,
     resolve_scene_spec,
     save_uploaded_video,
+    snapshot_paths_for_display,
 )
 from src.video.browser_video import make_browser_playable
 from src.video.video_source import VideoSource
@@ -189,6 +190,20 @@ if run_result is not None:
             st.dataframe(event_rows_for_display(run_result["events"]), hide_index=True)
         else:
             st.info("本次分析未触发事件。")
+
+        snapshots = snapshot_paths_for_display(run_dir, run_result["events"])
+        if snapshots:
+            st.subheader("事件截图")
+            snapshot_columns = st.columns(min(3, len(snapshots)))
+            for index, (snapshot_path, event) in enumerate(snapshots):
+                snapshot_columns[index % len(snapshot_columns)].image(
+                    snapshot_path,
+                    caption=(
+                        f"{event['event_id']} · "
+                        f"{event_rows_for_display([event])[0]['事件类型']}"
+                    ),
+                    width="stretch",
+                )
 
         with st.container(horizontal=True):
             if result_video_path.is_file():

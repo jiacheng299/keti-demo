@@ -7,6 +7,7 @@ from .app_service import (
     event_rows_for_display,
     resolve_scene_spec,
     save_uploaded_video,
+    snapshot_paths_for_display,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "event_rows_for_display",
     "resolve_scene_spec",
     "save_uploaded_video",
+    "snapshot_paths_for_display",
 ]
