@@ -245,11 +245,11 @@ Expected: Streamlit starts without import errors and serves the page locally. St
 
 **Interfaces:** `EventManager.add(candidate, frame) -> Event | None`; `EventExporter.export(run_dir, config, events, metrics) -> None`.
 
-- [ ] Test deduplication, snapshot creation, and cooldown using temporary directories.
-- [ ] Test JSON/CSV row equality and stable timestamp formatting.
-- [ ] Run tests and confirm failures due to missing implementation.
-- [ ] Implement event storage and exports.
-- [ ] Run tests and inspect generated files from a short clip.
+- [x] Test exact deduplication and snapshot creation using temporary directories; keep cooldown in `RuleEngine`.
+- [x] Test JSON/CSV row equality and stable timestamp formatting.
+- [x] Run tests and confirm failures due to missing implementation.
+- [x] Implement event storage and exports.
+- [x] Inspect generated JSON, CSV, summary, config, and JPEG files using a synthetic event/frame; short-video integration remains in Day 11.
 
 ## Day 10: DeepSeek Parser and Offline Templates
 
