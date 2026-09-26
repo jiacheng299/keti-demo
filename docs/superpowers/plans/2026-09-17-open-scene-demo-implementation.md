@@ -288,10 +288,10 @@ Expected: Streamlit starts without import errors and serves the page locally. St
 
 **Interfaces:** UI submits validated `SceneSpec` to `AnalysisPipeline.run` and displays `RunSummary` without implementing model or rule logic.
 
-- [ ] Add AppTest assertions for upload label, scene input, template mode, and offline status.
-- [ ] Run tests and confirm expected missing UI controls.
-- [ ] Implement single-page controls, current model, progress, result video, events, and downloads.
-- [ ] Run AppTest and perform one manual end-to-end run for each scene.
+- [x] Add AppTest assertions for upload label, scene input, template mode, and offline status.
+- [x] Run tests and confirm expected missing UI controls.
+- [x] Implement single-page controls, current model, progress, result video, events, and downloads.
+- [x] Run AppTest and perform one manual end-to-end run for each scene.
 
 ## Day 13: Verification and Offline Package
 

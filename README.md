@@ -37,6 +37,17 @@ python -m pip install -r requirements.txt
 终端显示 `Local URL: http://localhost:8501` 后，在浏览器打开该地址。停止服务时，
 在终端按 `Ctrl+C`。
 
+## 页面操作
+
+1. 上传 MP4、AVI、MOV、OGV 或 MKV 视频。
+2. 默认选择一个离线模板；如已配置 API Key，也可选择 DeepSeek 解析并填写场景需求。
+3. 点击“生成场景配置”，检查页面显示的场景、模型、目标和规则。
+4. 点击“开始分析”，等待进度达到 100%。
+5. 播放结果视频，查看事件表，并按需下载视频、JSON、CSV、摘要和场景配置。
+
+页面会在分析完成后将 OpenCV 输出转换为浏览器兼容的 H.264 视频。该步骤由
+`imageio-ffmpeg` 提供的本地 FFmpeg 执行，不需要另外安装系统级 FFmpeg。
+
 ## 测试
 
 ```powershell
