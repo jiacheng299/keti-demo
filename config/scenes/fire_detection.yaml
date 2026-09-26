@@ -1,0 +1,14 @@
+scene_type: fire
+model_id: fire_smoke
+targets:
+  - fire
+  - smoke
+rules:
+  - type: consecutive_frames
+    params:
+      rule_id: fire_sequence
+      frames: 8
+      max_gap_frames: 1
+alert:
+  enabled: true
+  cooldown_seconds: 10

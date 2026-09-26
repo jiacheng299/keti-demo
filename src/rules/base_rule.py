@@ -25,7 +25,7 @@ class EventCandidate(BaseModel):
     timestamp_seconds: float = Field(ge=0)
     event_type: str = Field(min_length=1)
     target_class: str = Field(min_length=1)
-    track_id: int = Field(ge=0)
+    track_id: int | None = Field(default=None, ge=0)
     confidence: float = Field(ge=0, le=1)
     trigger_rule: str = Field(min_length=1)
     alert_status: Literal["suspected", "confirmed"] = "confirmed"

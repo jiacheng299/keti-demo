@@ -7,6 +7,7 @@ from src.schemas.detection import Detection
 from src.schemas.scene_spec import RuleSpec, SceneSpec
 
 from .base_rule import EventCandidate, FrameState, StatefulRule
+from .fire_rules import ConsecutiveFramesRule
 from .region_rules import EnterRegionRule, LeaveRegionRule
 from .temporal_rules import DwellRule
 
@@ -15,7 +16,7 @@ class RuleEngine:
     def __init__(self) -> None:
         self._scene_signature: str | None = None
         self._rules: list[StatefulRule] = []
-        self._last_emitted_at: dict[tuple[str, str, int], float] = {}
+        self._last_emitted_at: dict[tuple[str, str, int | None], float] = {}
 
     def evaluate(
         self,
@@ -76,6 +77,16 @@ class RuleEngine:
                 return LeaveRegionRule(rule_id, polygon)
             dwell_seconds = float(params.get("seconds", 5.0))
             return DwellRule(rule_id, polygon, dwell_seconds)
+
+        if spec.type == "consecutive_frames":
+            rule_id = str(params.get("rule_id", f"consecutive_frames:{index}"))
+            required_frames = int(params.get("frames", 3))
+            max_gap_frames = int(params.get("max_gap_frames", 0))
+            return ConsecutiveFramesRule(
+                rule_id,
+                required_frames=required_frames,
+                max_gap_frames=max_gap_frames,
+            )
 
         raise ValueError(f"rule type is not implemented: {spec.type}")
 

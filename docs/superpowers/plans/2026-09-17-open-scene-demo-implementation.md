@@ -228,14 +228,14 @@ Expected: Streamlit starts without import errors and serves the page locally. St
 
 ### Task 9: Confirm fire alerts over consecutive frames
 
-**Files:** `src/models/fire_adapter.py`, `config/scenes/fire_detection.yaml`, `tests/test_fire_rules.py`.
+**Files:** `src/models/fire_adapter.py`, `src/rules/fire_rules.py`, `config/scenes/fire_detection.yaml`, `tests/test_fire_adapter.py`, `tests/test_fire_rules.py`.
 
-**Interfaces:** `FireAdapter.predict(frame) -> list[Detection]`; `ConsecutiveFramesRule.update(detections, frame_id) -> EventCandidate | None`.
+**Interfaces:** `FireAdapter.predict(frame, frame_id) -> list[Detection]`; `ConsecutiveFramesRule.evaluate(detections, frame_state) -> list[EventCandidate]`.
 
-- [ ] Test insufficient frames, sufficient frames, brief gaps, and cooldown.
-- [ ] Run tests and observe failures before implementation.
-- [ ] Implement fire output normalization and two-state suspected/confirmed rule.
-- [ ] Run tests and selected fire clip; document known false positives and caveats.
+- [x] Test insufficient frames, sufficient frames, brief gaps, reset, and cooldown.
+- [x] Run tests and observe missing-module failures before implementation.
+- [x] Implement shared YOLO output normalization and two-state suspected/confirmed rule.
+- [x] Run tests and the first 100 frames of the selected fire clip; keep smoke performance marked unverified.
 
 ## Day 9: Event Storage and Exports
 
