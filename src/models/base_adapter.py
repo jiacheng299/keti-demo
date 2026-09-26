@@ -12,7 +12,7 @@ class ModelAdapter(Protocol):
     def load(self) -> None:
         """Load model resources before inference."""
 
-    def predict(self, frame: Any) -> list[Detection]:
+    def predict(self, frame: Any, frame_id: int = 0) -> list[Detection]:
         """Return normalized detections for one video frame."""
 
     def unload(self) -> None:

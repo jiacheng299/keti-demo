@@ -274,11 +274,11 @@ Expected: Streamlit starts without import errors and serves the page locally. St
 
 **Interfaces:** `AnalysisPipeline.run(video_path, scene_spec, run_dir, progress_callback=None, stop_event=None) -> RunSummary`.
 
-- [ ] Write pipeline test with a tiny generated clip and deterministic fake adapter.
-- [ ] Assert result video, summary, JSON, and CSV exist with matching event counts.
-- [ ] Run test and confirm it fails because the pipeline does not exist.
-- [ ] Implement a single orchestration path with resource cleanup and progress updates.
-- [ ] Run integration tests for both scene adapters on their fixed local clips.
+- [x] Write pipeline test with a tiny generated clip and deterministic fake adapter.
+- [x] Assert result video, summary, JSON, and CSV exist with matching event counts.
+- [x] Run test and confirm it fails because the pipeline does not exist.
+- [x] Implement a single orchestration path with resource cleanup and progress updates.
+- [x] Run integration tests for both scene adapters on short clips derived from their fixed local videos.
 
 ## Day 12: Streamlit Interface
 
