@@ -1,9 +1,16 @@
 version: 1
 models:
+  face_landmarker:
+    adapter: face_landmarker
+    weights: models/face/face_landmarker.task
+    classes: [person]
+    device: cpu
+    imgsz: 256
+    confidence: 0.5
   yolo_general:
     adapter: yolo
     weights: models/border/yolo11n.pt
-    classes: [person, car, motorcycle, bus, truck]
+    classes: [person, car]
     device: cpu
     imgsz: 416
     confidence: 0.25

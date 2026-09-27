@@ -21,6 +21,20 @@ class FakeClient:
         response = self.responses.pop(0)
         if isinstance(response, Exception):
             raise response
+        # Legacy scene fixtures are wrapped in the new assessment wire format.
+        try:
+            payload = json.loads(response)
+        except (json.JSONDecodeError, TypeError):
+            return response
+        if isinstance(payload, dict) and "scene_type" in payload:
+            text = messages[1]["content"]
+            payload = {
+                "status": "supported", "reason": "supported fixture", "summary": text,
+                "requirements": [{"source_text": text, "capability": r["type"], "rule_index": i}
+                                 for i, r in enumerate(payload.get("rules", []))],
+                "unmet_requirements": [], "scene": payload,
+            }
+            return json.dumps(payload, ensure_ascii=False)
         return response
 
 
@@ -110,7 +124,7 @@ def test_parser_rejects_model_and_target_mismatches(
     response = json.dumps(invalid)
 
     with pytest.raises(SceneParseError, match=expected_message):
-        make_parser(FakeClient(response, response), registry).parse("test")
+        make_parser(FakeClient(response, response), registry).parse("有人进入禁区")
 
 
 def test_parser_rejects_unsafe_rule_parameters(registry, valid_border_payload):
@@ -130,7 +144,7 @@ def test_parser_rejects_unsafe_rule_parameters(registry, valid_border_payload):
     response = json.dumps(invalid)
 
     with pytest.raises(SceneParseError, match="unsupported parameters"):
-        make_parser(FakeClient(response, response), registry).parse("test")
+        make_parser(FakeClient(response, response), registry).parse("有人进入禁区")
 
 
 def test_parser_rejects_schema_rule_not_implemented_by_engine(
@@ -143,8 +157,8 @@ def test_parser_rejects_schema_rule_not_implemented_by_engine(
     }
     response = json.dumps(invalid)
 
-    with pytest.raises(SceneParseError, match="not supported for border"):
-        make_parser(FakeClient(response, response), registry).parse("test")
+    with pytest.raises(SceneParseError, match="object_present"):
+        make_parser(FakeClient(response, response), registry).parse("有人进入禁区")
 
 
 def test_parser_rejects_invalid_polygon_and_numeric_ranges(
@@ -167,7 +181,7 @@ def test_parser_rejects_invalid_polygon_and_numeric_ranges(
     response = json.dumps(bad_polygon)
 
     with pytest.raises(SceneParseError, match="polygon"):
-        make_parser(FakeClient(response, response), registry).parse("test")
+        make_parser(FakeClient(response, response), registry).parse("有人进入禁区")
 
 
 def test_parser_rejects_invalid_dwell_seconds(registry, valid_border_payload):
@@ -187,7 +201,7 @@ def test_parser_rejects_invalid_dwell_seconds(registry, valid_border_payload):
     response = json.dumps(invalid)
 
     with pytest.raises(SceneParseError, match="seconds"):
-        make_parser(FakeClient(response, response), registry).parse("test")
+        make_parser(FakeClient(response, response), registry).parse("有人进入禁区")
 
 
 def test_parser_rejects_invalid_consecutive_frame_count(registry):
@@ -205,7 +219,7 @@ def test_parser_rejects_invalid_consecutive_frame_count(registry):
     response = json.dumps(invalid)
 
     with pytest.raises(SceneParseError, match="frames"):
-        make_parser(FakeClient(response, response), registry).parse("test")
+        make_parser(FakeClient(response, response), registry).parse("有人进入禁区")
 
 
 @pytest.mark.parametrize(
@@ -224,7 +238,7 @@ def test_parser_rejects_unknown_rules_and_extra_top_level_fields(
     response = json.dumps(invalid)
 
     with pytest.raises(SceneParseError, match="two invalid"):
-        make_parser(FakeClient(response, response), registry).parse("test")
+        make_parser(FakeClient(response, response), registry).parse("有人进入禁区")
 
 
 @pytest.mark.parametrize(
@@ -286,3 +300,12 @@ def test_template_id_cannot_traverse_paths(registry):
 
     with pytest.raises(UnknownTemplateError, match="unknown template"):
         parser.load_template("../models")
+
+
+def test_parser_supplies_actual_frame_rate_for_duration_conversion(registry, valid_border_json):
+    client = FakeClient(valid_border_json)
+    make_parser(client, registry).parse("连续监测到火焰8秒后报警", video_fps=25)
+    prompt = client.received_messages[0][0]["content"]
+    assert "25 FPS" in prompt
+    assert "201 frames" in prompt
+    assert "Do not assume 30 FPS" in prompt

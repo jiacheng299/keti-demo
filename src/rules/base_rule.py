@@ -5,6 +5,7 @@ from typing import Literal, Protocol
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.schemas.detection import Detection
+from src.schemas.face_observation import FaceObservation
 
 #当前视频位置
 class FrameState(BaseModel):
@@ -14,6 +15,9 @@ class FrameState(BaseModel):
 
     frame_id: int = Field(ge=0)
     timestamp_seconds: float = Field(ge=0)
+    effective_fps: float | None = Field(default=None, gt=0)
+    face: FaceObservation | None = None
+    faces: tuple[FaceObservation, ...] = ()
 
 #规则候选事件
 class EventCandidate(BaseModel):
@@ -26,7 +30,7 @@ class EventCandidate(BaseModel):
     event_type: str = Field(min_length=1)
     target_class: str = Field(min_length=1)
     track_id: int | None = Field(default=None, ge=0)
-    confidence: float = Field(ge=0, le=1)
+    confidence: float | None = Field(default=None, ge=0, le=1)
     trigger_rule: str = Field(min_length=1)
     alert_status: Literal["suspected", "confirmed"] = "confirmed"
 

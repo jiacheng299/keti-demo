@@ -15,6 +15,14 @@ class MissingAPIKeyError(RuntimeError):
 class DeepSeekAPIError(RuntimeError):
     """Raised when the DeepSeek request or response cannot be used."""
 
+    def __init__(
+        self, message: str, *, status_code: int | None = None,
+        error_code: str = "unknown",
+    ) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.error_code = error_code
+
 
 Transport = Callable[[Request, float], bytes]
 
@@ -33,10 +41,10 @@ class DeepSeekClient:
         *,
         model: str = "deepseek-flash",
         endpoint: str = "https://api.deepseek.com/chat/completions",
-        timeout_seconds: float = 30.0,
+        timeout_seconds: float = 60.0,
         transport: Transport | None = None,
     ) -> None:
-        self._api_key = api_key or os.getenv("DEEPSEEK_API_KEY")
+        self._api_key = (api_key if api_key is not None else os.getenv("DEEPSEEK_API_KEY", "")).strip()
         self.model = model
         self.endpoint = endpoint
         self.timeout_seconds = timeout_seconds
@@ -56,7 +64,10 @@ class DeepSeekClient:
             "model": self.model,
             "messages": [dict(message) for message in messages],
             "response_format": {"type": "json_object"},
-            "max_tokens": 1024,
+            # Scene extraction only needs final JSON. Thinking otherwise shares
+            # the output budget and can leave no tokens for the actual config.
+            "thinking": {"type": "disabled"},
+            "max_tokens": 4096,
             "stream": False,
         }
         return Request(
@@ -77,7 +88,9 @@ class DeepSeekClient:
             except HTTPError as error:
                 if error.code not in {408, 409, 429} and error.code < 500:
                     raise DeepSeekAPIError(
-                        f"DeepSeek request failed with HTTP {error.code}"
+                        f"DeepSeek request failed with HTTP {error.code}",
+                        status_code=error.code,
+                        error_code="http_error",
                     ) from error
                 last_error = error
             except (TimeoutError, URLError, OSError) as error:
@@ -86,16 +99,40 @@ class DeepSeekClient:
             if attempt == 1:
                 break
 
-        raise DeepSeekAPIError("DeepSeek request failed after one retry") from last_error
+        raise DeepSeekAPIError(
+            "DeepSeek request failed after one retry",
+            status_code=last_error.code if isinstance(last_error, HTTPError) else None,
+            error_code=(
+                "http_error" if isinstance(last_error, HTTPError)
+                else "timeout" if isinstance(last_error, TimeoutError)
+                or isinstance(getattr(last_error, "reason", None), TimeoutError)
+                else "connection_error"
+            ),
+        ) from last_error
 
     @staticmethod
     def _extract_content(response_bytes: bytes) -> str:
         try:
             payload: Any = json.loads(response_bytes.decode("utf-8"))
-            content = payload["choices"][0]["message"]["content"]
+            choice = payload["choices"][0]
+            content = choice["message"]["content"]
+            finish_reason = choice.get("finish_reason")
         except (UnicodeDecodeError, json.JSONDecodeError, KeyError, IndexError, TypeError) as error:
-            raise DeepSeekAPIError("DeepSeek response has an invalid structure") from error
+            raise DeepSeekAPIError(
+                "DeepSeek response has an invalid structure", error_code="invalid_response"
+            ) from error
+
+        if finish_reason == "length":
+            raise DeepSeekAPIError(
+                "DeepSeek response exceeded its output limit", error_code="output_truncated"
+            )
+        if finish_reason == "content_filter":
+            raise DeepSeekAPIError(
+                "DeepSeek response was filtered", error_code="content_filtered"
+            )
 
         if not isinstance(content, str) or not content.strip():
-            raise DeepSeekAPIError("DeepSeek response content is empty")
+            raise DeepSeekAPIError(
+                "DeepSeek response content is empty", error_code="empty_response"
+            )
         return content

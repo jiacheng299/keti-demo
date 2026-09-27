@@ -10,6 +10,9 @@ from .base_rule import EventCandidate, FrameState, StatefulRule
 from .fire_rules import ConsecutiveFramesRule
 from .region_rules import EnterRegionRule, LeaveRegionRule
 from .temporal_rules import DwellRule
+from .progress import RuleProgress
+from .occupancy_rules import UnderstaffedRule
+from .drowsiness_rules import EyesClosedRule
 
 
 class RuleEngine:
@@ -17,6 +20,7 @@ class RuleEngine:
         self._scene_signature: str | None = None
         self._rules: list[StatefulRule] = []
         self._last_emitted_at: dict[tuple[str, str, int | None], float] = {}
+        self.progress: list[RuleProgress] = []
 
     def evaluate(
         self,
@@ -38,7 +42,16 @@ class RuleEngine:
             for rule in self._rules
             for candidate in rule.evaluate(target_detections, frame_state)
         ]
+        self.progress = []
+        for spec, rule in zip(scene_spec.rules, self._rules):
+            for item in rule.progress:
+                if "polygon" in spec.params:
+                    suffix = {"dwell": " 滞留", "enter_region": " 进入", "leave_region": " 离开", "region_understaffed": " 值守"}.get(spec.type, "")
+                    item.label = spec.params.get("name",item.rule_id) + suffix
+                self.progress.append(item)
         if not scene_spec.alert.enabled:
+            for item in self.progress:
+                item.reason = "报警已关闭；" + item.reason
             return []
 
         emitted: list[EventCandidate] = []
@@ -50,9 +63,14 @@ class RuleEngine:
                 candidate.track_id,
             )
             last_emitted = self._last_emitted_at.get(key)
-            if last_emitted is not None and (
+            episode_event = candidate.event_type in {"post_unstaffed", "post_recovered", "drowsiness_suspected", "eyes_reopened"}
+            if not episode_event and last_emitted is not None and (
                 candidate.timestamp_seconds - last_emitted < cooldown
             ):
+                for item in self.progress:
+                    if item.rule_id == candidate.trigger_rule and item.track_id == candidate.track_id:
+                        item.reason = f"满足条件，但冷却中，剩余 {cooldown-(candidate.timestamp_seconds-last_emitted):.1f} 秒"
+                        item.status = "cooldown"
                 continue
             self._last_emitted_at[key] = candidate.timestamp_seconds
             emitted.append(candidate)
@@ -68,6 +86,13 @@ class RuleEngine:
 
     def _build_rule(self, spec: RuleSpec, index: int) -> StatefulRule:
         params = spec.params
+        if spec.type == "region_understaffed":
+            return UnderstaffedRule(str(params.get("region_id", f"post:{index}")),
+                                    self._require_points(params, "polygon", minimum=3),
+                                    **{k: params[k] for k in ("min_count", "seconds", "recovery_seconds", "startup_seconds") if k in params})
+        if spec.type == "eyes_closed_duration":
+            return EyesClosedRule(str(params.get("rule_id", f"eyes:{index}")),
+                                  **{k: params[k] for k in ("seconds", "recovery_seconds", "closed_ear", "open_ear", "min_face_width", "max_yaw_degrees") if k in params})
         if spec.type in {"enter_region", "leave_region", "dwell"}:
             polygon = self._require_points(params, "polygon", minimum=3)
             rule_id = str(params.get("region_id", f"{spec.type}:{index}"))
@@ -82,11 +107,13 @@ class RuleEngine:
             rule_id = str(params.get("rule_id", f"consecutive_frames:{index}"))
             required_frames = int(params.get("frames", 3))
             max_gap_frames = int(params.get("max_gap_frames", 0))
-            return ConsecutiveFramesRule(
+            rule = ConsecutiveFramesRule(
                 rule_id,
                 required_frames=required_frames,
                 max_gap_frames=max_gap_frames,
             )
+            rule.duration_seconds = params.get("seconds")
+            return rule
 
         raise ValueError(f"rule type is not implemented: {spec.type}")
 

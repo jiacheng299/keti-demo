@@ -1,5 +1,5 @@
 import json
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 
 import pytest
 
@@ -36,12 +36,13 @@ def test_client_sends_json_mode_and_returns_message_content():
         "model": "deepseek-flash",
         "messages": [{"role": "user", "content": "JSON please"}],
         "response_format": {"type": "json_object"},
-        "max_tokens": 1024,
+        "thinking": {"type": "disabled"},
+        "max_tokens": 4096,
         "stream": False,
     }
     assert captured["authorization"] == "Bearer test-key"
     assert captured["content_type"] == "application/json"
-    assert captured["timeout"] == 30.0
+    assert captured["timeout"] == 60.0
     assert captured["url"] == "https://api.deepseek.com/chat/completions"
 
 
@@ -134,3 +135,35 @@ def test_client_rejects_malformed_or_empty_responses(response):
 
     with pytest.raises(DeepSeekAPIError, match="response"):
         client.complete([])
+
+
+@pytest.mark.parametrize("error,code", [
+    (TimeoutError("private transport details"), "timeout"),
+    (URLError(TimeoutError("private transport details")), "timeout"),
+    (URLError("private transport details"), "connection_error"),
+    (HTTPError("url", 503, "private transport details", {}, None), "http_error"),
+])
+def test_client_classifies_exhausted_retries_without_leaking_details(error, code):
+    calls = []
+
+    def transport(*args):
+        calls.append(1)
+        raise error
+
+    with pytest.raises(DeepSeekAPIError) as caught:
+        DeepSeekClient(api_key="test-key", transport=transport).complete([])
+    assert len(calls) == 2
+    assert caught.value.error_code == code
+    assert "private transport details" not in str(caught.value)
+
+
+@pytest.mark.parametrize("response,code", [
+    (b"<html>upstream error</html>", "invalid_response"),
+    (json.dumps({"choices": [{"finish_reason": "length", "message": {"content": "", "reasoning_content": "internal reasoning"}}]}).encode(), "output_truncated"),
+    (json.dumps({"choices": [{"finish_reason": "stop", "message": {"content": ""}}]}).encode(), "empty_response"),
+])
+def test_client_distinguishes_bad_responses_and_truncated_thinking(response, code):
+    client = DeepSeekClient(api_key="test-key", transport=lambda *args: response)
+    with pytest.raises(DeepSeekAPIError) as caught:
+        client.complete([])
+    assert caught.value.error_code == code

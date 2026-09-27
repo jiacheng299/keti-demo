@@ -13,6 +13,7 @@ from src.pipeline.contracts import PipelineProgress
 from src.schemas.detection import Detection
 from src.schemas.scene_spec import SceneSpec
 from src.video.frame_sampler import FrameSampler
+from src.visualization.scene_overlay import SceneOverlay
 
 
 FRAME_SIZE = (64, 48)
@@ -212,6 +213,30 @@ def test_pipeline_samples_inference_but_preserves_result_video_length(tmp_path):
     assert summary.frames_read == 3
     assert summary.processed_frames == 2
     assert count_video_frames(summary.result_video_path) == 3
+
+
+def test_event_notice_survives_frames_without_inference_and_is_saved_in_snapshot(tmp_path, monkeypatch):
+    video_path = tmp_path / "input.avi"
+    create_synthetic_video(video_path)
+    drawn_events = []
+    original_draw = SceneOverlay.draw
+
+    def capture_draw(self, frame, detections):
+        drawn_events.append([event.event_type for event in self.active_events])
+        return original_draw(self, frame, detections)
+
+    monkeypatch.setattr(SceneOverlay, "draw", capture_draw)
+    adapter = FakeAdapter(fire_detections)
+    summary = AnalysisPipeline(
+        make_registry("fire", adapter), frame_sampler=FrameSampler(every_n_frames=2),
+    ).run(video_path, fire_scene(), tmp_path / "run")
+    assert drawn_events == [["fire_suspected"], ["fire_suspected"], ["fire_confirmed"]]
+    snapshot = cv2.imdecode(
+        np.frombuffer((summary.run_dir / summary.events[-1].snapshot_path).read_bytes(), dtype=np.uint8),
+        cv2.IMREAD_COLOR,
+    )
+    # The banner background is dark, unlike the gray source frame at confirmation.
+    assert np.mean(snapshot[3:8, 40:55]) < 60
 
 
 def test_pipeline_stop_exports_partial_results_and_unloads_model(tmp_path):

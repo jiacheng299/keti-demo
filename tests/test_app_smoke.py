@@ -13,10 +13,11 @@ def test_app_renders_upload_scene_controls_and_offline_status(monkeypatch):
     app = AppTest.from_file(APP_PATH).run()
 
     assert not app.exception
-    assert any("开放场景视觉语义认知 Demo" in item.value for item in app.title)
+    assert any(item.value == "开放场景视觉语义认知" for item in app.title)
     assert app.file_uploader[0].label == "上传视频文件"
-    assert app.text_area[0].label == "场景需求"
+    assert len(app.text_area) == 0
     assert app.selectbox[0].label == "离线模板"
+    assert app.selectbox[0].options == ["边防禁区", "边防人员滞留", "火灾检测", "人员在岗监测", "打瞌睡监测"]
     assert app.button(key="prepare_scene").label == "生成场景配置"
     assert app.button(key="run_analysis").disabled is True
     assert any("DeepSeek API：未配置" in item.value for item in app.warning)
@@ -30,8 +31,29 @@ def test_offline_template_can_be_generated_before_video_upload(monkeypatch):
 
     assert not app.exception
     assert app.session_state["scene_spec"]["model_id"] == "yolo_general"
+    assert app.multiselect(key="cfg_targets").options == ["人员", "车辆"]
     assert app.button(key="run_analysis").disabled is True
     assert app.json
+
+
+def test_scene_modes_only_show_relevant_inputs_and_invalidate_previous_config():
+    app = AppTest.from_file(APP_PATH).run()
+    app.button(key="prepare_scene").click().run()
+    assert app.session_state["scene_spec"] is not None
+    app.segmented_control(key="scene_mode").set_value("DeepSeek 解析").run()
+    assert not app.exception
+    assert len(app.selectbox) == 0
+    assert app.text_area[0].label == "场景需求"
+    assert app.session_state["scene_spec"] is None
+    assert app.button(key="run_analysis").disabled
+    app.segmented_control(key="scene_mode").set_value("离线模板").run()
+    assert not app.exception
+    assert len(app.text_area) == 0
+    assert app.selectbox[0].label == "离线模板"
+    app.button(key="prepare_scene").click().run()
+    assert app.session_state["scene_spec"] is not None
+    app.selectbox(key="template_label").select("火灾检测").run()
+    assert app.session_state["scene_spec"] is None
 
 
 def test_completed_run_renders_video_localized_events_and_downloads(tmp_path):
@@ -85,5 +107,7 @@ def test_completed_run_renders_video_localized_events_and_downloads(tmp_path):
         "视频时间（秒）",
         "状态",
     ]
-    assert len(app.get("download_button")) == 5
+    assert {b.key for b in app.get("download_button") if b.key and b.key.startswith("download_")} == {
+        "download_video", "download_events.json", "download_events.csv", "download_summary.json", "download_config.json",
+    }
     assert len(app.image) == 1

@@ -1,5 +1,7 @@
 """CPU-only Ultralytics adapter that returns normalized detections."""
 
+import os
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -7,6 +9,14 @@ import numpy as np
 from src.schemas.detection import Detection
 
 from .model_registry import ModelDefinition
+
+
+VEHICLE_CLASSES = frozenset({"car", "motorcycle", "bus", "truck"})
+
+
+def normalized_class_name(name: str) -> str:
+    """Expose one vehicle class while still detecting every supported vehicle type."""
+    return "car" if name in VEHICLE_CLASSES else name
 
 
 class YoloAdapter:
@@ -22,6 +32,13 @@ class YoloAdapter:
         if not self.definition.weights.is_file():
             raise FileNotFoundError(f"model weights not found: {self.definition.weights}")
 
+        # Configure Ultralytics before its first import: Windows user profile
+        # directories may be unavailable to a background Streamlit process.
+        if not os.environ.get("YOLO_CONFIG_DIR"):
+            config_dir = Path(__file__).resolve().parents[2] / "runs" / "ultralytics"
+            config_dir.mkdir(parents=True, exist_ok=True)
+            os.environ["YOLO_CONFIG_DIR"] = str(config_dir)
+
         from ultralytics import YOLO
 
         self._model = YOLO(str(self.definition.weights))
@@ -36,7 +53,7 @@ class YoloAdapter:
         class_ids = [
             int(class_id)
             for class_id, class_name in self._model.names.items()
-            if class_name in self.definition.classes
+            if normalized_class_name(class_name) in self.definition.classes
         ]
         results = self._model.predict(
             source=frame,
@@ -57,7 +74,7 @@ class YoloAdapter:
             for box, confidence, class_id in zip(
                 boxes, confidences, detected_class_ids, strict=True
             ):
-                class_name = result.names[int(class_id)]
+                class_name = normalized_class_name(result.names[int(class_id)])
                 confidence_value = float(confidence)
                 if (
                     class_name not in self.definition.classes

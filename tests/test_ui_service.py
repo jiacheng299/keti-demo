@@ -5,6 +5,7 @@ from src.ui.app_service import (
     resolve_scene_spec,
     save_uploaded_video,
     snapshot_paths_for_display,
+    resolve_scene_with_status,
 )
 
 
@@ -23,6 +24,14 @@ def test_offline_scene_resolution_does_not_call_deepseek():
 
     assert scene.scene_type == "fire"
     assert scene.model_id == "fire_smoke"
+
+
+def test_fire_duration_requires_uploaded_video_before_api_request():
+    with pytest.raises(ValueError, match="先上传视频"):
+        resolve_scene_with_status(
+            mode="deepseek", requirement="连续监测到火焰8秒后报警",
+            template_id="fire_detection", client=FailIfCalledClient(),
+        )
 
 
 def test_uploaded_video_uses_content_hash_and_safe_extension(tmp_path):

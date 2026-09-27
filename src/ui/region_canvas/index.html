@@ -1,0 +1,27 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8">
+<style>
+body{margin:0;font:14px system-ui;color:#213047;background:transparent} .tools{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}button{padding:7px 12px;border:1px solid #b7c6d5;border-radius:7px;background:#fff;cursor:pointer}button.active{background:#e0f4f1;border-color:#008678}canvas{width:100%;max-width:800px;display:block;touch-action:none;border-radius:8px;background:#172031}p{margin:7px 0;color:#52647a;font-size:13px}
+</style>
+<div class="tools"><button data-mode="edit" class="active">拖动顶点</button><button data-mode="rect">绘制矩形</button><button data-mode="poly">绘制多边形</button><button id="finish">完成多边形</button><button id="undo">撤销一步</button><button id="reset">恢复已应用区域</button></div>
+<canvas id="canvas" aria-label="禁区绘制画布"></canvas><p id="hint">拖动圆点调整区域。坐标始终对应原视频，缩放网页不影响禁区。</p>
+<script>
+const canvas=document.querySelector('canvas'),ctx=canvas.getContext('2d'),hint=document.querySelector('#hint');
+let args=null,points=[],draft=[],history=[],mode='edit',drag=-1,start=null,img=new Image(),token=null;
+function post(type,data={}){parent.postMessage({isStreamlitMessage:true,type,...data},'*')}
+function size(){post('streamlit:setFrameHeight',{height:document.body.scrollHeight+4})}
+function emit(pending=false){post('streamlit:setComponentValue',{value:{points,pending,token},dataType:'json'})}
+function remember(){history.push(structuredClone(points));if(history.length>30)history.shift()}
+function path(ps,color,fill=true){if(!ps.length)return;ctx.beginPath();ps.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));if(fill)ctx.closePath();ctx.strokeStyle=color;ctx.lineWidth=Math.max(2,canvas.width/300);if(fill){ctx.fillStyle=color+'25';ctx.fill()}ctx.stroke()}
+function draw(){if(!args)return;ctx.clearRect(0,0,canvas.width,canvas.height);if(img.complete&&img.naturalWidth)ctx.drawImage(img,0,0,canvas.width,canvas.height);for(const other of args.others)path(other,'#8fa8bd');path(points,'#ffcf32');if(draft.length)path(draft,'#00efd1',false);ctx.fillStyle='#fff';for(const [x,y]of points){ctx.beginPath();ctx.arc(x,y,Math.max(5,canvas.width/100),0,Math.PI*2);ctx.fill()}size()}
+function position(e){const r=canvas.getBoundingClientRect();return [Math.round(Math.max(0,Math.min(canvas.width-1,(e.clientX-r.left)*canvas.width/r.width))),Math.round(Math.max(0,Math.min(canvas.height-1,(e.clientY-r.top)*canvas.height/r.height)))]}
+document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;draft=[];start=null;document.querySelectorAll('[data-mode]').forEach(x=>x.classList.toggle('active',x===b));hint.textContent=mode==='rect'?'在画面中按住并拖动，松开完成矩形。':mode==='poly'?'依次点击 3–20 个顶点，再点击“完成多边形”。':'拖动白色圆点调整顶点。';emit(false);draw()});
+canvas.onpointerdown=e=>{if(!args)return;const p=position(e);if(mode==='poly'){if(draft.length===0){remember();emit(true)}if(draft.length<20)draft.push(p);draw();return}if(mode==='rect'){remember();start=p;emit(true)}else{const r=canvas.getBoundingClientRect();drag=points.findIndex(q=>Math.hypot((q[0]-p[0])*r.width/canvas.width,(q[1]-p[1])*r.height/canvas.height)<15);if(drag>=0){remember();emit(true)}}canvas.setPointerCapture(e.pointerId)};
+canvas.onpointermove=e=>{const p=position(e);if(start){const[x,y]=start;points=[[x,y],[p[0],y],p,[x,p[1]]];draw()}else if(drag>=0){points[drag]=p;draw()}};
+canvas.onpointerup=()=>{if(start||drag>=0){start=null;drag=-1;emit(false);draw()}};
+canvas.onpointercancel=()=>{start=null;drag=-1;emit(false);draw()};
+document.querySelector('#finish').onclick=()=>{if(draft.length<3){hint.textContent='多边形至少需要 3 个顶点。';return}points=draft;draft=[];emit(false);draw()};
+document.querySelector('#undo').onclick=()=>{if(draft.length){draft.pop();emit(draft.length>0)}else if(history.length){points=history.pop();emit(false)}draw()};
+document.querySelector('#reset').onclick=()=>{remember();points=structuredClone(args.applied);draft=[];emit(false);draw()};
+window.addEventListener('message',e=>{if(e.source!==parent||e.data.type!=='streamlit:render')return;const next=e.data.args;if(token!==next.token){token=next.token;points=structuredClone(next.points);draft=[];history=[]}args=next;canvas.width=args.width;canvas.height=args.height;if(img.src!==args.image){img.onload=draw;img.src=args.image}draw()});
+new ResizeObserver(size).observe(document.body);post('streamlit:componentReady',{apiVersion:1});
+</script></html>

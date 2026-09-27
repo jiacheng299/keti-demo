@@ -11,9 +11,14 @@ import yaml
 
 from src.models.model_registry import ModelRegistry, UnknownModelError
 from src.schemas.scene_spec import RuleSpec, SceneSpec
+from src.schemas.scene_time import resolve_time_rules
 
 from .deepseek_client import DeepSeekAPIError, MissingAPIKeyError
 from .prompts import build_scene_messages
+from .requirement_guard import (
+    ASSESSMENT_PROMPT, RequirementDecision, RequirementRejected,
+    validate_decision_mapping, validate_requirement_text,
+)
 
 
 class SceneParseError(ValueError):
@@ -29,22 +34,30 @@ class CompletionClient(Protocol):
 
 
 TEMPLATE_FILES = {
+    "on_duty": "on_duty.yaml",
+    "drowsiness": "drowsiness.yaml",
+    "border_intrusion": "border_intrusion.yaml",
     "border_person_intrusion": "border_person_intrusion.yaml",
     "border_vehicle_intrusion": "border_vehicle_intrusion.yaml",
     "border_dwell": "border_dwell.yaml",
     "fire_detection": "fire_detection.yaml",
 }
 
-MODEL_SCENES = {"yolo_general": "border", "fire_smoke": "fire"}
+MODEL_SCENES = {"yolo_general": {"border", "on_duty"}, "fire_smoke": {"fire"},
+                "face_landmarker": {"drowsiness"}}
 RULES_BY_SCENE = {
+    "on_duty": {"region_understaffed"},
+    "drowsiness": {"eyes_closed_duration"},
     "border": {"enter_region", "leave_region", "dwell"},
     "fire": {"consecutive_frames"},
 }
 PARAM_KEYS = {
-    "enter_region": {"region_id", "polygon"},
-    "leave_region": {"region_id", "polygon"},
-    "dwell": {"region_id", "polygon", "seconds"},
-    "consecutive_frames": {"rule_id", "frames", "max_gap_frames"},
+    "region_understaffed": {"region_id", "name", "polygon", "min_count", "seconds", "recovery_seconds", "startup_seconds"},
+    "eyes_closed_duration": {"rule_id", "seconds", "recovery_seconds", "closed_ear", "open_ear", "min_face_width", "max_yaw_degrees"},
+    "enter_region": {"region_id", "name", "polygon"},
+    "leave_region": {"region_id", "name", "polygon"},
+    "dwell": {"region_id", "name", "polygon", "seconds"},
+    "consecutive_frames": {"rule_id", "frames", "seconds", "max_gap_frames"},
 }
 ID_PATTERN = re.compile(r"^[a-z0-9_-]+$")
 
@@ -63,27 +76,53 @@ class SceneParser:
         self.model_registry = model_registry
         self.template_dir = Path(template_dir)
 
-    def parse(self, text: str) -> SceneSpec:
-        """Request and validate a scene, retrying one invalid model output."""
-        messages = build_scene_messages(text)
-        last_error: Exception | None = None
-        for _attempt in range(2):
+    def parse(self, text: str, *, video_fps: float | None = None) -> SceneSpec:
+        """Assess intent and capabilities before returning an executable scene."""
+        return self.parse_requirement(text, video_fps=video_fps)[0]
+
+    def parse_requirement(self, text: str, *, video_fps: float | None = None,
+                          video_size: tuple[int, int] | None = None) -> tuple[SceneSpec, str]:
+        text = validate_requirement_text(text)
+        messages = build_scene_messages(text, video_fps=video_fps)
+        messages[0]["content"] += ASSESSMENT_PROMPT
+        if video_size is not None:
+            width, height = video_size
+            if width <= 1 or height <= 1:
+                raise ValueError("视频尺寸无效")
+            messages[0]["content"] += (
+                f"\nActual video dimensions are {width}x{height}. Override the default 640x480: "
+                f"all polygon coordinates must satisfy 0<=x<{width}, 0<=y<{height}. "
+                f"Default editable rectangle: [[{width*.25},{height*.25}],"
+                f"[{width*.75},{height*.25}],[{width*.75},{height*.75}],[{width*.25},{height*.75}]]."
+            )
+        last_error = None
+        for attempt in range(2):
             content = self.client.complete(messages)
             try:
-                payload = json.loads(content)
-                return self._validate_payload(payload)
-            except (
-                json.JSONDecodeError,
-                ValidationError,
-                UnknownModelError,
-                TypeError,
-                ValueError,
-            ) as error:
+                decision = RequirementDecision.model_validate_json(content)
+                if decision.status != "supported":
+                    # Never salvage a configuration from a rejected assessment.
+                    raise RequirementRejected(decision.status, decision.reason,
+                                              unmet=decision.unmet_requirements,
+                                              vlm_eligible=decision.vlm_eligible, vlm_reason=decision.vlm_reason)
+                scene = self._validate_payload(decision.scene)
+                validate_decision_mapping(decision, text, scene)
+                if video_size is not None:
+                    for rule in scene.rules:
+                        if "polygon" in rule.params and any(x >= width or y >= height for x,y in rule.params["polygon"]):
+                            raise ValueError("区域超出上传视频尺寸")
+                if any(r.type == "consecutive_frames" and "seconds" in r.params for r in scene.rules):
+                    if video_fps is None:
+                        raise RequirementRejected("needs_clarification", "请先上传视频，再按视频帧率确定持续检测时间。")
+                    scene = resolve_time_rules(scene, video_fps)
+                return scene, decision.summary
+            except RequirementRejected:
+                raise
+            except (ValidationError, ValueError, TypeError, UnknownModelError) as error:
                 last_error = error
-
-        raise SceneParseError(
-            f"DeepSeek returned two invalid scene configurations: {last_error}"
-        ) from last_error
+                if attempt == 0:
+                    messages[0]["content"] += "\nThe previous response failed local validation. Return the complete assessment envelope with internally consistent requirements and scene; do not skip assessment."
+        raise SceneParseError(f"DeepSeek returned two invalid requirement assessments: {last_error}") from last_error
 
     def parse_or_template(self, text: str, template_id: str) -> SceneSpec:
         """Use one fixed local template when API parsing cannot produce a scene."""
@@ -112,7 +151,7 @@ class SceneParser:
         definition = self.model_registry.get(scene.model_id)
 
         expected_scene = MODEL_SCENES.get(scene.model_id)
-        if expected_scene != scene.scene_type:
+        if scene.scene_type not in (expected_scene or set()):
             raise ValueError(
                 f"model '{scene.model_id}' does not belong to scene_type '{scene.scene_type}'"
             )
@@ -122,37 +161,65 @@ class SceneParser:
             raise ValueError(f"unsupported targets for '{scene.model_id}': {unsupported_targets}")
 
         allowed_rules = RULES_BY_SCENE[scene.scene_type]
+        if scene.scene_type in {"on_duty", "drowsiness"} and scene.targets != ["person"]:
+            raise ValueError("在岗和打瞌睡监测的目标必须为人员")
+        if scene.scene_type == "drowsiness" and len(scene.rules) != 1:
+            raise ValueError("打瞌睡监测使用一组共享阈值规则，对每个人分别计时")
+        identifiers = set()
         for rule in scene.rules:
             if rule.type not in allowed_rules:
                 raise ValueError(
                     f"rule '{rule.type}' is not supported for {scene.scene_type} scenes"
                 )
             self._validate_rule(rule)
+            identifier = rule.params.get("region_id", rule.params.get("rule_id"))
+            if scene.scene_type == "on_duty" and identifier in identifiers:
+                raise ValueError("每个岗位必须使用不同的 region_id")
+            identifiers.add(identifier)
         return scene
 
     def _validate_rule(self, rule: RuleSpec) -> None:
+        if "name" in rule.params and (not isinstance(rule.params["name"], str) or not 1 <= len(rule.params["name"].strip()) <= 40):
+            raise ValueError("区域名称须为 1–40 个字符")
         extra_keys = set(rule.params) - PARAM_KEYS[rule.type]
         if extra_keys:
             raise ValueError(
                 f"unsupported parameters for '{rule.type}': {sorted(extra_keys)}"
             )
 
-        identifier_key = "rule_id" if rule.type == "consecutive_frames" else "region_id"
+        identifier_key = "rule_id" if rule.type in {"consecutive_frames", "eyes_closed_duration"} else "region_id"
         identifier = rule.params.get(identifier_key)
         if identifier is not None and (
             not isinstance(identifier, str) or not ID_PATTERN.fullmatch(identifier)
         ):
             raise ValueError(f"{identifier_key} must use lowercase letters, digits, _ or -")
 
-        if rule.type in {"enter_region", "leave_region", "dwell"}:
+        if rule.type in {"enter_region", "leave_region", "dwell", "region_understaffed"}:
             self._validate_polygon(rule.params.get("polygon"))
 
         if rule.type == "dwell" and "seconds" in rule.params:
             self._require_number(rule.params["seconds"], "seconds", minimum=0.1, maximum=3600)
 
+        if rule.type in {"region_understaffed", "eyes_closed_duration"}:
+            for key in ("seconds", "recovery_seconds"):
+                if key in rule.params:
+                    self._require_number(rule.params[key], key, minimum=0.1, maximum=3600)
+        if rule.type == "region_understaffed":
+            self._require_integer(rule.params.get("min_count", 1), "min_count", minimum=1, maximum=100)
+            self._require_number(rule.params.get("startup_seconds", 2), "startup_seconds", minimum=0, maximum=3600)
+        if rule.type == "eyes_closed_duration":
+            for key, default in (("closed_ear", 0.20), ("open_ear", 0.24)):
+                self._require_number(rule.params.get(key, default), key, minimum=0.01, maximum=0.8)
+            if rule.params.get("closed_ear", 0.20) >= rule.params.get("open_ear", 0.24):
+                raise ValueError("睁眼阈值必须高于闭眼阈值")
+            self._require_integer(rule.params.get("min_face_width", 100), "min_face_width", minimum=40, maximum=2000)
+            self._require_number(rule.params.get("max_yaw_degrees", 30), "max_yaw_degrees", minimum=5, maximum=45)
+
         if rule.type == "consecutive_frames":
+            if "seconds" in rule.params:
+                self._require_number(rule.params["seconds"], "seconds", minimum=0.1, maximum=3600)
             if "frames" in rule.params:
-                self._require_integer(rule.params["frames"], "frames", minimum=1, maximum=1000)
+                self._require_integer(rule.params["frames"], "frames", minimum=1, maximum=1000000)
             if "max_gap_frames" in rule.params:
                 self._require_integer(
                     rule.params["max_gap_frames"],

@@ -4,20 +4,23 @@ from collections.abc import Callable
 from pathlib import Path
 from time import perf_counter
 from typing import Protocol
+import json
 
 from src.events import EventExporter, EventManager
 from src.models.fire_adapter import FireAdapter
 from src.models.model_registry import ModelRegistry
 from src.models.yolo_adapter import YoloAdapter
+from src.models.face_landmarker_adapter import FaceLandmarkerAdapter
 from src.rules.base_rule import FrameState
 from src.rules.rule_engine import RuleEngine
 from src.schemas.event import Event
 from src.schemas.scene_spec import SceneSpec
+from src.schemas.scene_time import resolve_time_rules
 from src.tracking.tracker import Tracker
 from src.video.frame_sampler import FrameSampler
 from src.video.video_source import VideoSource
 from src.video.video_writer import VideoWriter
-from src.visualization.annotator import Annotator
+from src.visualization.scene_overlay import SceneOverlay
 
 from .contracts import PipelineProgress, RunSummary
 
@@ -52,6 +55,7 @@ class AnalysisPipeline:
         registry = ModelRegistry.from_config(config_path)
         registry.register_factory("yolo", YoloAdapter)
         registry.register_factory("fire", FireAdapter)
+        registry.register_factory("face_landmarker", FaceLandmarkerAdapter)
         return cls(registry, frame_sampler=frame_sampler)
 
     def run(
@@ -68,6 +72,7 @@ class AnalysisPipeline:
         adapter = self.model_registry.create(scene_spec.model_id)
         tracker = Tracker()
         rule_engine = RuleEngine()
+        overlay = SceneOverlay(scene_spec)
         event_manager = EventManager(
             output_dir,
             scene_spec.scene_type,
@@ -84,21 +89,32 @@ class AnalysisPipeline:
             adapter.load()
             with VideoSource.open(video_path) as source:
                 metadata = source.metadata()
+                scene_spec = resolve_time_rules(scene_spec, metadata.fps, self.frame_sampler.every_n_frames)
                 with VideoWriter.open(
                     result_video_path,
                     fps=metadata.fps,
                     frame_size=(metadata.width, metadata.height),
-                ) as writer:
+                ) as writer, (output_dir / "rule_progress.jsonl").open("w",encoding="utf-8") as progress_file:
                     for frame_id, timestamp_seconds, frame in source:
                         if stop_event is not None and stop_event.is_set():
                             stopped = True
                             break
 
-                        annotated = frame
+                        detections = []
+                        candidates = []
                         if self.frame_sampler.should_process(frame_id):
-                            detections = adapter.predict(frame, frame_id)
+                            face = None
+                            faces = ()
+                            if scene_spec.scene_type == "drowsiness":
+                                detections = adapter.predict(frame, frame_id, timestamp_seconds=timestamp_seconds)
+                                face = adapter.observation
+                                faces = adapter.observations
+                            else:
+                                detections = adapter.predict(frame, frame_id)
+                            overlay.face_observation = face
+                            overlay.face_observations = faces
                             processed_frames += 1
-                            detection_count += len(detections)
+                            detection_count += len(detections) + sum(f.valid for f in faces)
                             if scene_spec.scene_type == "border":
                                 detections = tracker.update(
                                     detections,
@@ -111,13 +127,25 @@ class AnalysisPipeline:
                                 FrameState(
                                     frame_id=frame_id,
                                     timestamp_seconds=timestamp_seconds,
+                                    effective_fps=metadata.fps/self.frame_sampler.every_n_frames,
+                                    face=face,
+                                    faces=faces,
                                 ),
                             )
-                            annotated = Annotator.draw(frame, detections)
-                            for candidate in candidates:
-                                event = event_manager.add(candidate, annotated)
-                                if event is not None:
-                                    events.append(event)
+                            overlay.progress = rule_engine.progress
+                            record = {"frame_id":frame_id,"timestamp_seconds":timestamp_seconds,"rules":[p.as_dict() for p in rule_engine.progress]}
+                            if face is not None:
+                                record["face"] = face.model_dump(mode="json", exclude={"eye_points"})
+                                record["faces"] = [f.model_dump(mode="json", exclude={"eye_points"}) for f in faces]
+                            progress_file.write(json.dumps(record,ensure_ascii=False)+"\n")
+
+                        # Render on every output frame, even when inference is sampled.
+                        overlay.update(timestamp_seconds, candidates)
+                        annotated = overlay.draw(frame, detections)
+                        for candidate in candidates:
+                            event = event_manager.add(candidate, annotated)
+                            if event is not None:
+                                events.append(event)
 
                         writer.write(annotated)
                         frames_read += 1

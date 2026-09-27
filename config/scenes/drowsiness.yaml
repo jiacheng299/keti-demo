@@ -1,0 +1,16 @@
+scene_type: drowsiness
+model_id: face_landmarker
+targets: [person]
+rules:
+  - type: eyes_closed_duration
+    params:
+      rule_id: closed_eyes
+      seconds: 2
+      recovery_seconds: 0.5
+      closed_ear: 0.20
+      open_ear: 0.24
+      min_face_width: 100
+      max_yaw_degrees: 30
+alert:
+  enabled: true
+  cooldown_seconds: 0

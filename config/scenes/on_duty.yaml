@@ -1,0 +1,16 @@
+scene_type: on_duty
+model_id: yolo_general
+targets: [person]
+rules:
+  - type: region_understaffed
+    params:
+      region_id: duty_zone
+      name: 岗位 1
+      polygon: [[110, 25], [250, 25], [250, 239], [110, 239]]
+      min_count: 1
+      seconds: 5
+      recovery_seconds: 1
+      startup_seconds: 2
+alert:
+  enabled: true
+  cooldown_seconds: 0

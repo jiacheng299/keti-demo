@@ -5,6 +5,7 @@ from typing import Literal
 from src.schemas.detection import Detection
 
 from .base_rule import EventCandidate, FrameState
+from .progress import RuleProgress
 
 
 class ConsecutiveFramesRule:
@@ -27,6 +28,8 @@ class ConsecutiveFramesRule:
         self._gap_frames = 0
         self._suspected_emitted = False
         self._confirmed = False
+        self.progress: list[RuleProgress] = []
+        self.duration_seconds: float | None = None
 
     def evaluate(
         self,
@@ -35,8 +38,13 @@ class ConsecutiveFramesRule:
     ) -> list[EventCandidate]:
         if not detections:
             self._gap_frames += 1
+            gap = self._gap_frames
             if self._gap_frames > self.max_gap_frames:
                 self._reset()
+                reason = f"未检测到目标；漏检 {gap} 帧，进度已清零"
+            else:
+                reason = f"漏检 {gap}/{self.max_gap_frames} 帧；保留进度，不累计"
+            self._set_progress(frame_state, reason)
             return []
 
         self._gap_frames = 0
@@ -66,7 +74,18 @@ class ConsecutiveFramesRule:
             )
             self._confirmed = True
 
+        self._set_progress(frame_state, "已达确认阈值，本轮不重复确认" if self._confirmed else "持续命中，尚未达到确认阈值")
         return events
+
+    def _set_progress(self, state: FrameState, reason: str) -> None:
+        seconds = self.duration_seconds is not None and state.effective_fps is not None
+        self.progress = [RuleProgress(
+            self.rule_id, "火灾确认", reason,
+            current=max(0,self._matching_frames-1)/state.effective_fps if seconds else self._matching_frames,
+            required=self.duration_seconds if seconds else self.required_frames,
+            unit="秒" if seconds else "帧",
+            status="confirmed" if self._confirmed else "tracking" if self._matching_frames else "waiting",
+        )]
 
     def _reset(self) -> None:
         self._matching_frames = 0

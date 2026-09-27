@@ -20,13 +20,26 @@ models/**/*.pt
 models/**/*.pth
 models/**/*.onnx
 models/**/*.engine
+models/**/*.task
+models/**/*.download
 
 # Videos and generated run outputs
-assets/demo_videos/
+assets/demo_videos/*
+!assets/demo_videos/SOURCES.md
+!assets/demo_videos/monitoring_samples.json
+!assets/demo_videos/OpenVino-Driver-Behaviour-LICENSE.txt
 runs/
 *.mp4
 *.avi
 *.mov
+
+# Version the prepared demonstration videos requested for repository delivery.
+!assets/demo_videos/*.mp4
+!assets/demo_videos/*.avi
+!assets/demo_videos/*.ogv
+!assets/demo_videos/*.mov
+!assets/demo_videos/*.mkv
+!assets/demo_videos/*.webm
 
 # Document review intermediates
 .docx_review/

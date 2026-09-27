@@ -10,7 +10,7 @@ from src.schemas.detection import Detection
 
 
 class Annotator:
-    """Render boxes, class labels, confidence, and optional track IDs."""
+    """Render boxes, class labels, and optional track IDs."""
 
     @staticmethod
     def draw(

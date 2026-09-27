@@ -11,6 +11,7 @@ from .base_rule import (
     event_from_detection,
 )
 from .region_rules import Point, normalize_polygon, point_in_polygon
+from .progress import RuleProgress
 
 
 class DwellRule:
@@ -27,6 +28,7 @@ class DwellRule:
         self.dwell_seconds = dwell_seconds
         self._entered_at: dict[int, float] = {}
         self._triggered_tracks: set[int] = set()
+        self.progress: list[RuleProgress] = []
 
     def evaluate(
         self,
@@ -34,6 +36,7 @@ class DwellRule:
         frame_state: FrameState,
     ) -> list[EventCandidate]:
         events: list[EventCandidate] = []
+        self.progress = []
         for detection in detections:
             if detection.track_id is None:
                 continue
@@ -42,6 +45,7 @@ class DwellRule:
             if not inside:
                 self._entered_at.pop(track_id, None)
                 self._triggered_tracks.discard(track_id)
+                self.progress.append(RuleProgress(self.rule_id,self.rule_id,"目标在区域外，滞留计时归零",track_id=track_id,required=self.dwell_seconds,unit="秒"))
                 continue
 
             entered_at = self._entered_at.setdefault(
@@ -60,4 +64,8 @@ class DwellRule:
                     )
                 )
                 self._triggered_tracks.add(track_id)
+            triggered = track_id in self._triggered_tracks
+            self.progress.append(RuleProgress(self.rule_id,self.rule_id,"已达滞留阈值，本次停留不重复报警" if triggered else "区域内滞留，尚未达到时长",track_id=track_id,current=frame_state.timestamp_seconds-entered_at,required=self.dwell_seconds,unit="秒",status="confirmed" if triggered else "tracking"))
+        if not self.progress:
+            self.progress = [RuleProgress(self.rule_id,self.rule_id,"未观察到所选目标；同 ID 重现时按视频时间判断",required=self.dwell_seconds,unit="秒")]
         return events

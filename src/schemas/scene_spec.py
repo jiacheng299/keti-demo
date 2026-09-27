@@ -5,8 +5,10 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-SceneType = Literal["border", "fire"]
+SceneType = Literal["border", "fire", "on_duty", "drowsiness"]
 RuleType = Literal[
+    "region_understaffed",
+    "eyes_closed_duration",
     "object_present",
     "enter_region",
     "leave_region",

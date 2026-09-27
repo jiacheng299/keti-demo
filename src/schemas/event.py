@@ -18,7 +18,7 @@ class Event(BaseModel):
     target_class: str = Field(min_length=1)
     track_id: int | None = Field(default=None, ge=0)
     timestamp_seconds: float = Field(ge=0)
-    confidence: float = Field(ge=0, le=1)
+    confidence: float | None = Field(default=None, ge=0, le=1)
     trigger_rule: str = Field(min_length=1)
     snapshot_path: str | None = None
     alert_status: Literal["suspected", "confirmed"]
