@@ -365,8 +365,7 @@ keti_demo/
 │   └── demo_videos/
 ├── runs/
 ├── tests/
-├── docs/
-└── worklog/
+└── docs/
 ```
 
 各模块必须保持清晰边界：

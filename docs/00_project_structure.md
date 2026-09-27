@@ -199,21 +199,11 @@ docs/
 ├── 10_multi_face_drowsiness.md         # 多人眼部跟踪、视频使用与实测结果
 ├── 11_fresh_windows_setup.md           # 新 Windows 电脑一键安装、运行、API 配置及故障处理
 ├── model_selection.md                 # 模型和示例素材的选择依据
-└── superpowers/                        # 历史设计/实施记录；当前行为以源码和用户手册为准
-    ├── specs/
-    │   ├── 2026-09-16-open-scene-vision-demo-design.md # 初始整体架构设计
-    │   ├── 2026-09-26-event-storage-export-design.md  # 事件证据存储与导出设计
-    │   └── 2026-09-27-portable-demo-api-settings-design.md # 可移植运行和 API 设置设计
-    └── plans/
-        ├── 2026-09-17-open-scene-demo-implementation.md # 初始开发实施计划
-        ├── 2026-09-26-analysis-pipeline-implementation.md # 分析流水线实施计划
-        ├── 2026-09-26-deepseek-scene-parser-implementation.md # DeepSeek 配置解析实施计划
-        ├── 2026-09-26-event-storage-export-implementation.md # 事件存储导出实施计划
-        └── 2026-09-26-final-delivery-implementation.md # 最初交付验收计划
-
-worklog/
-├── daily_checklist.md                  # 开发阶段任务清单
-└── daily_log.md                        # 开发过程记录
+└── superpowers/                        # 历史设计记录；当前行为以源码和用户手册为准
+    └── specs/
+        ├── 2026-09-16-open-scene-vision-demo-design.md # 初始整体架构设计
+        ├── 2026-09-26-event-storage-export-design.md  # 事件证据存储与导出设计
+        └── 2026-09-27-portable-demo-api-settings-design.md # 可移植运行和 API 设置设计
 ```
 
 ## 本地运行目录（不提交 Git）
