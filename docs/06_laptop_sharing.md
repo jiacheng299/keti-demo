@@ -1,8 +1,8 @@
 # 用笔记本分享 Demo
 
-已启用 Cloudflare 临时公网 HTTPS 隧道。当前公网地址保存在本机 `runs/share/public-url.txt`。
-同一局域网设备也可访问当前的 `http://192.168.102.160:8502/`。
-这个 IP 不是公网地址；换网络或 DHCP 重新分配地址后，需要重新查看笔记本 IP。
+Cloudflare 临时公网 HTTPS 隧道启动后，地址保存在本机 `runs/share/public-url.txt`。
+局域网分享需按下方命令监听 `0.0.0.0`，其他设备访问 `http://<本机局域网IP>:8502/`。
+使用 `ipconfig` 查看当前电脑的 IPv4 地址；换电脑或网络后不能沿用旧地址。
 
 分享实例不再需要访问码。访客打开链接后可以直接上传视频、调用已配置的 DeepSeek API、
 运行模型和下载自己的分析结果，但没有保存、清除本机 API 密钥的按钮。
@@ -23,8 +23,8 @@
 前台运行时按 Ctrl+C 停止。后台运行时可在任务管理器中结束对应的分享服务 Python 进程。
 不要重复启动已经占用 8502 端口的实例。
 
-Windows 防火墙目前已有针对 `C:\ProgramData\miniconda3\python.exe` 的入站允许规则，
-分享服务实际由该解释器运行；本次没有关闭防火墙或修改路由器。
+其他设备通过局域网访问时，Windows 防火墙需允许当前 Python 程序在可信网络接受连接。
+新电脑不会继承开发者电脑上的防火墙规则；公网隧道为主动出站连接，无需开放路由器端口。
 
 ## 公网访问与重启
 
@@ -34,6 +34,11 @@ API 密钥管理控件保持隐藏。
 单个视频上限为 95 MB，以适应公网入口的请求大小限制；本地非分享实例仍为 500 MB。
 
 在项目根目录使用 PowerShell 运行：
+
+新电脑先安装官方 Windows amd64 版 cloudflared，将可执行文件保存为
+`runs/share/bin/cloudflared.exe`（目录不存在时新建）。下载入口：
+[Cloudflare 官方 GitHub Releases](https://github.com/cloudflare/cloudflared/releases)。
+它不包含在 Git 仓库中，也不是本地运行必需依赖。
 
 ```powershell
 .\scripts\start_public.ps1

@@ -8,30 +8,31 @@
 
 - 边防：人员进入禁区、车辆进入禁区、人员区域滞留。
 - 火灾：火焰/烟雾目标检测，经连续帧规则从“疑似”升级为“确认”。当前固定素材只验证了火焰效果，不对烟雾效果作保证。
+- 在岗：岗位区域缺员与回岗恢复。
+- 打瞌睡：最多 5 张清晰人脸分别计时，判断持续闭眼与睁眼恢复。
+- Qwen：对适合视觉判断而小模型无法完整执行的需求，提供手动抽帧检验入口。
 
 当前不包含摄像头/RTSP、多路并发、本地大模型、身份识别、模型训练和生产部署。
 
 ## 2. 环境和必需文件
 
-- Windows 10/11。
-- Python 3.11。
+- Windows 10/11 x64。
+- Python 3.13 64 位。
 - 只使用 CPU，不需要 CUDA。
-- 项目根目录：`C:\Users\陈宇鑫\Desktop\keti_demo`。
+- 项目放在本机可写目录，无需使用开发者电脑的目录。
 - 边防权重：`models/border/yolo11n.pt`。
 - 火灾权重：`models/fire/fire_smoke_yolov8n.pt`。
+- 人脸权重：`models/face/face_landmarker.task`。
 - 建议验收视频：`assets/demo_videos/border_demo.avi` 和 `assets/demo_videos/fire_demo.avi`。
 
-权重、视频、运行结果和密钥均已被 `.gitignore` 排除，不会推送到 GitHub。
+9 份示例视频已包含在 GitHub 中；安装器自动下载三套权重。运行结果和密钥不随仓库分发。
 
 ## 3. 首次安装
 
-在项目根目录打开 PowerShell：
+新电脑先安装 Python 3.13 x64，然后双击根目录 `setup.cmd`。或在项目根目录打开 PowerShell：
 
 ```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+py -3.13 scripts/setup_demo.py
 ```
 
 验证依赖状态：
@@ -40,7 +41,7 @@ python -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m pip check
 ```
 
-如果 PowerShell 禁止执行 `Activate.ps1`，可不激活虚拟环境，后续一律使用 `.\.venv\Scripts\python.exe` 即可。
+无需激活虚拟环境。详细要求及网络、DLL 等故障处理见 [新电脑安装运行指南](11_fresh_windows_setup.md)。
 
 ## 4. 配置 DeepSeek 和 Qwen（可选）
 
@@ -68,11 +69,10 @@ Remove-Item Env:DEEPSEEK_API_KEY -ErrorAction SilentlyContinue
 
 ## 5. 启动和停止
 
-必须使用 Streamlit 启动，不能直接运行 `python app.py`：
+双击根目录 `start.cmd`，或在项目根目录使用 Streamlit 启动，不能直接运行 `python app.py`：
 
 ```powershell
-cd C:\Users\陈宇鑫\Desktop\keti_demo
-.\.venv\Scripts\python.exe -m streamlit run app.py
+.\.venv\Scripts\python.exe -m streamlit run app.py --server.address=127.0.0.1 --server.port=8501
 ```
 
 终端出现 `Local URL: http://localhost:8501` 后，浏览器打开该地址。停止服务时，回到启动终端按 `Ctrl+C`。
@@ -245,10 +245,10 @@ Remove-Item Env:DEEPSEEK_API_KEY -ErrorAction SilentlyContinue
 当前不进行身份识别，也不保证在同位置无缝换人时辨别出不同人员。
 多人测试可上传 `assets/demo_videos/multi_person_clear_1080p.mp4`（真实双人近景）或 `multi_face_staggered_composite.mp4`（同一演员的两路错时拼接）。详见 [多人眼部监测与测试](10_multi_face_drowsiness.md)。
 
-首次在其他电脑安装时，按 `requirements.txt` 安装依赖并运行：
+首次在其他电脑安装时，运行根目录 `setup.cmd` 即可下载全部模型。已安装依赖后，也可单独运行：
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\download_face_model.py
+.\.venv\Scripts\python.exe scripts\download_models.py
 ```
 
 两种新场景的事件 confidence 为空：它们是规则触发结果，不是模型输出的“缺员概率”或“睡着概率”。精确阈值见 `config.json`，计时原因及双眼测量见 `rule_progress.jsonl`。

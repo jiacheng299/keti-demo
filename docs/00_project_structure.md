@@ -9,13 +9,17 @@
 ```text
 keti-demo/
 ├── app.py                              # Streamlit 网页入口，组织上传、配置、分析与结果展示
+├── setup.cmd                           # Windows 首次安装入口，选择 Python 3.13 并执行安装器
+├── start.cmd                           # Windows 本机启动入口，先检查权重再启动 8501 页面
 ├── README.md                           # 项目介绍、安装、启动与使用入口
 ├── requirements.txt                    # Python 依赖及版本约束
+├── requirements-windows.lock.txt       # Windows x64 / Python 3.13 验证过的完整依赖约束
 ├── pytest.ini                          # 测试发现配置，限定从 tests 目录收集测试
 ├── .env.example                        # 环境变量填写示例；应用不会自动读取 .env
 ├── .gitignore                          # 排除密钥、虚拟环境、权重及运行产物；允许提交示例视频
 ├── config/
 │   ├── models.yaml                     # 模型注册配置：适配器、权重、类别、置信度、CPU 参数
+│   ├── model_downloads.json            # 三套模型的固定下载地址、文件大小和 SHA-256
 │   ├── settings.yaml                   # 预留的全局默认配置；页面行为以 app.py 当前实现为准
 │   └── scenes/
 │       ├── border_intrusion.yaml       # 网页统一使用的边防禁区模板
@@ -125,6 +129,9 @@ src/
 
 ```text
 scripts/
+├── setup_demo.py                       # 创建虚拟环境、安装 CPU 依赖、下载权重并运行自检
+├── download_models.py                 # 三套模型下载与校验，原子替换、失败清理、支持仅检查
+├── check_installation.py               # 无 API 检查真实模型推理、双人检测、视频读取和转码
 ├── serve_shared.py                     # 启动分享版网页；隐藏密钥编辑，按模式设置上传上限
 ├── start_public.ps1                    # 启动/复用分享服务与 Cloudflare 隧道，输出公网地址
 ├── stop_public.ps1                     # 停止本项目的公网隧道，本地网页可继续使用
@@ -160,6 +167,7 @@ tests/
 ├── test_monitoring_ui.py               # 在岗、打瞌睡模板的参数编辑与应用
 ├── test_multi_face_drowsiness.py       # 多脸编号、独立计时/恢复、消失与交叉等情况
 ├── test_pipeline_smoke.py              # 模型、规则、视频和事件导出的串联流程
+├── test_portable_setup.py              # 模型下载校验、网络重试、失败保护与独立于工作目录的路径
 ├── test_qwen.py                        # Qwen 设置、抽帧、接口、证据、缓存及额度控制
 ├── test_region_rules.py                # 禁区进入/离开及边界判断
 ├── test_requirement_guard.py           # 需求合法性、能力匹配和多模态路径判定
@@ -189,6 +197,7 @@ docs/
 ├── 08_requirement_validation_and_vlm_plan.md # 需求校验与多模态补充方案
 ├── 09_qwen_video_inspection.md         # Qwen 设置、测试流程和结果解释
 ├── 10_multi_face_drowsiness.md         # 多人眼部跟踪、视频使用与实测结果
+├── 11_fresh_windows_setup.md           # 新 Windows 电脑一键安装、运行、API 配置及故障处理
 ├── model_selection.md                 # 模型和示例素材的选择依据
 └── superpowers/                        # 历史设计/实施记录；当前行为以源码和用户手册为准
     ├── specs/

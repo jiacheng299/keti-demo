@@ -22,20 +22,26 @@
 ## 环境准备
 
 仓库包含 `assets/demo_videos/` 中的示例视频、素材来源和许可说明，克隆后即可选取视频测试。
-模型权重仍需按 `config/models.yaml` 与 [模型选择记录](docs/model_selection.md) 准备；
-人脸权重可运行下方下载命令获取。API Key、本机上传记录与 `runs/` 分析结果不随仓库分发。
+三套模型权重由安装脚本自动下载并校验 SHA-256。API Key、本机上传记录与 `runs/` 分析结果不随仓库分发。
 
-建议使用 Python 3.11。PowerShell 中执行：
+**另一台 Windows 10/11（x64）电脑：**
+
+1. 安装 **Python 3.13 64 位**，安装时勾选加入 PATH；不要复制其他电脑的 `.venv`。
+2. 克隆本仓库，或在 GitHub 点击 **Code → Download ZIP** 后完整解压到可写目录。
+3. 双击根目录 **`setup.cmd`**，首次安装需要联网。它创建虚拟环境、安装固定依赖和 CPU PyTorch、下载全部模型，并检查真实推理及视频转码。
+4. 显示 `Setup completed` 后，双击 **`start.cmd`**，访问 **http://127.0.0.1:8501**。
+5. 选择离线模板即可分析自带示例视频；需要 DeepSeek/Qwen 时，在新电脑的“运行状态”重新填写自己的 API Key。
+
+详细说明与故障处理见 [新电脑安装运行指南](docs/11_fresh_windows_setup.md)。当前一键安装目标为 Windows x64 / Python 3.13；其他系统不在本次验证范围内。
+
+也可以在项目根目录终端执行：
 
 ```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-python scripts/download_face_model.py
+py -3.13 scripts/setup_demo.py
+.\start.cmd
 ```
 
-当前 Windows 笔记本已在 Python 3.13 上验证 MediaPipe 1.0.1。OpenCV 两个发行包分别满足
+`requirements-windows.lock.txt` 固定本次验证的依赖版本，安装器自动使用它。OpenCV 两个发行包分别满足
 Ultralytics 与 MediaPipe 的依赖要求，版本固定一致；请一起按 requirements.txt 安装，避免单独升级其中一个。
 
 可以在本机网页“运行状态”中分别展开“DeepSeek API 设置”和“Qwen API 设置”，

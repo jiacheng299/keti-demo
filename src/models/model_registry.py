@@ -44,7 +44,7 @@ class ModelRegistry:
 
     @classmethod
     def from_config(cls, path: str | Path) -> "ModelRegistry":
-        config_path = Path(path)
+        config_path = Path(path).resolve()
         with config_path.open("r", encoding="utf-8") as file:
             payload = yaml.safe_load(file)
 
@@ -59,6 +59,13 @@ class ModelRegistry:
                 {"model_id": model_id, **cls._require_mapping(model_id, raw_model)}
             )
             for model_id, raw_model in raw_models.items()
+        }
+        # Standard config/models.yaml refers to the project root, not shell CWD.
+        root = config_path.parent.parent if config_path.parent.name == "config" else config_path.parent
+        definitions = {
+            model_id: definition.model_copy(update={
+                "weights": definition.weights if definition.weights.is_absolute() else (root / definition.weights).resolve()
+            }) for model_id, definition in definitions.items()
         }
         return cls(definitions)
 
