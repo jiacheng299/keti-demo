@@ -17,13 +17,29 @@ def render_qwen_route(path, requirement, feedback):
     if not feedback.get('vlm_eligible'):
         st.info(feedback.get('vlm_reason') or "该需求尚未确认适合云端视觉检验，请明确可从画面观察的条件后重新解析。")
         return
-    st.info("可以使用 Qwen 检验此需求。")
+    st.info(
+        "现有模板与您的需求匹配度不足，本地模型和规则无法完整满足本次监测要求。"
+        "建议采用阿里云 Qwen 多模态大模型，结合您的需求分析视频采样画面，进行疑似事件监测。"
+    )
+    if feedback.get('reason'):
+        st.text("未匹配原因：" + feedback['reason'])
+    if feedback.get('unmet'):
+        st.text("现有模板未覆盖的需求：" + "；".join(feedback['unmet']))
+    if feedback.get('vlm_reason'):
+        st.text("采用多模态分析的依据：" + feedback['vlm_reason'])
     try:
         settings = load_qwen_settings()
         if is_shared_instance() and not settings.public_enabled:
             st.info("分享者已关闭公网 Qwen 检验。")
             return
-        st.caption("每段视频最长60秒；约每秒2帧初筛，疑似片段约每秒4帧复核，单次最多18次请求。结果仅供查看疑似事件。")
+        st.caption(
+            "点击“使用 Qwen 检验”后才会开始云端监测，将需求和视频采样画面发送至阿里云，"
+            "云端调用会消耗所配置账号的 API 额度。使用前需配置有效的 Qwen API Key；分享页面由分享者配置。"
+        )
+        st.caption(
+            "支持最长 60 秒的视频：约每秒 2 帧初筛，疑似片段约每秒 4 帧复核，单次最多 18 次请求。"
+            "完成后可查看疑似事件、判断依据和证据截图。采样分析可能遗漏短暂动作，结果需人工复核。"
+        )
         valid = path is not None
         if valid:
             try:
